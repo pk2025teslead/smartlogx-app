@@ -6,6 +6,7 @@ from django.core.wsgi import get_wsgi_application
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smartlogx.settings')
+# Use minimal settings for Vercel
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'vercel_settings')
 
 app = get_wsgi_application()

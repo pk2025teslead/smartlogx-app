@@ -13,9 +13,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default="django-insecure-#aw=i#$zs6f=md95z4uu=x+l)=0!8a-t&#q4^p$awb0y&-*_d)")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['*', '.vercel.app', '.now.sh', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -69,26 +69,28 @@ WSGI_APPLICATION = "smartlogx.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Default database configuration for local development
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": "smartlogx_db",
-        "USER": "root",
-        "PASSWORD": "root",  # Update with your MySQL password
-        "HOST": "localhost",
-        "PORT": "3306",
-        "OPTIONS": {
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            "charset": "utf8mb4",
-        },
+# Database - Use PostgreSQL for production
+DATABASE_URL = config('DATABASE_URL', default=None)
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
-}
-
-# Override with DATABASE_URL if provided (for production)
-database_url = config('DATABASE_URL', default=None)
-if database_url:
-    DATABASES['default'] = dj_database_url.parse(database_url)
+else:
+    # Fallback to MySQL for local development
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": "smartlogx_db",
+            "USER": "root",
+            "PASSWORD": "root",
+            "HOST": "localhost",
+            "PORT": "3306",
+            "OPTIONS": {
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+                "charset": "utf8mb4",
+            },
+        }
+    }
 
 
 # Password validation

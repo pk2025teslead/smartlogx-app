@@ -17,7 +17,12 @@ pip install -r requirements.txt --no-cache-dir
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
-echo "Running migrations..."
-python manage.py migrate
+echo "Checking if database is available..."
+if python manage.py check --database default; then
+    echo "Running migrations..."
+    python manage.py migrate
+else
+    echo "Database not available, skipping migrations"
+fi
 
 echo "Build completed successfully!"

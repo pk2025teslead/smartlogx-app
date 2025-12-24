@@ -1,0 +1,240 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Panel{% endblock %} - SmartLogX</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.min.css">
+    
+    <!-- Zoho Admin CSS -->
+    <link rel="stylesheet" href="{% static 'css/zoho-admin.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="zoho-admin">
+    <!-- Loader Overlay -->
+    <div class="zoho-loader-overlay">
+        <div class="zoho-spinner"></div>
+    </div>
+
+    <!-- Top Navbar -->
+    <nav class="zoho-navbar">
+        <div class="zoho-navbar-left">
+            <button class="zoho-mobile-toggle" id="mobileToggle">
+                <i class="bi bi-list"></i>
+            </button>
+            <a href="{% url 'adminpanel:dashboard' %}" class="zoho-navbar-brand">
+                <div class="logo"><i class="bi bi-journal-code"></i></div>
+                <span>SmartLogX</span>
+            </a>
+        </div>
+        
+        <div class="zoho-navbar-center">
+            <div class="zoho-search-global">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Search..." class="zoho-global-search-input">
+            </div>
+        </div>
+        
+        <div class="zoho-navbar-right">
+            <button class="zoho-navbar-icon" title="Notifications">
+                <i class="bi bi-bell"></i>
+            </button>
+            <button class="zoho-navbar-icon" id="profileToggle" title="Profile">
+                <i class="bi bi-person-circle"></i>
+            </button>
+        </div>
+    </nav>
+    
+    <!-- Profile Slide Panel -->
+    <div class="profile-panel-overlay" id="profileOverlay"></div>
+    <div class="profile-panel" id="profilePanel">
+        <div class="profile-panel-header">
+            <h3>My Profile</h3>
+            <button class="profile-panel-close" id="profileClose"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="profile-panel-body">
+            <form id="profileForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <!-- Profile Photo -->
+                <div class="profile-photo-section">
+                    <div class="profile-photo-wrapper">
+                        <div class="profile-photo" id="profilePhoto">
+                            <span id="profileInitials">{{ request.user.username|slice:":2"|upper }}</span>
+                            <img id="profileImage" src="" alt="" style="display:none;">
+                        </div>
+                        <label class="profile-photo-upload" for="photoInput">
+                            <i class="bi bi-camera"></i>
+                        </label>
+                        <input type="file" id="photoInput" name="profile_photo" accept="image/*" style="display:none;">
+                    </div>
+                    <p class="profile-photo-hint">Click camera to upload photo</p>
+                </div>
+                
+                <!-- Profile Fields -->
+                <div class="profile-form-group">
+                    <label class="profile-label">Username</label>
+                    <input type="text" class="profile-input" name="username" value="{{ request.user.username }}" readonly>
+                </div>
+                
+                <div class="profile-form-group">
+                    <label class="profile-label">Email</label>
+                    <input type="email" class="profile-input" name="email" value="{{ request.user.email }}">
+                </div>
+                
+                <div class="profile-form-group">
+                    <label class="profile-label">First Name</label>
+                    <input type="text" class="profile-input" name="first_name" value="{{ request.user.first_name }}">
+                </div>
+                
+                <div class="profile-form-group">
+                    <label class="profile-label">Last Name</label>
+                    <input type="text" class="profile-input" name="last_name" value="{{ request.user.last_name }}">
+                </div>
+                
+                <div class="profile-form-divider"></div>
+                
+                <h4 class="profile-section-title">Change Password</h4>
+                
+                <div class="profile-form-group">
+                    <label class="profile-label">Current Password</label>
+                    <input type="password" class="profile-input" name="current_password" placeholder="Enter current password">
+                </div>
+                
+                <div class="profile-form-group">
+                    <label class="profile-label">New Password</label>
+                    <input type="password" class="profile-input" name="new_password" placeholder="Enter new password">
+                </div>
+                
+                <div class="profile-form-group">
+                    <label class="profile-label">Confirm Password</label>
+                    <input type="password" class="profile-input" name="confirm_password" placeholder="Confirm new password">
+                </div>
+                
+                <div class="profile-form-actions">
+                    <button type="submit" class="profile-btn-save">
+                        <i class="bi bi-check-lg"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="zoho-sidebar" id="sidebar">
+        <div class="zoho-sidebar-content">
+            <ul class="zoho-sidebar-menu">
+                <li class="zoho-sidebar-item">
+                    <a href="{% url 'adminpanel:dashboard' %}" class="zoho-sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" title="Dashboard">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="zoho-sidebar-item">
+                    <a href="{% url 'adminpanel:user_list' %}" class="zoho-sidebar-link {% if 'user' in request.resolver_match.url_name %}active{% endif %}" title="User Management">
+                        <i class="bi bi-people-fill"></i>
+                        <span>User Management</span>
+                    </a>
+                </li>
+                <li class="zoho-sidebar-item">
+                    <a href="{% url 'adminpanel:log_list' %}" class="zoho-sidebar-link {% if 'log_list' in request.resolver_match.url_name %}active{% endif %}" title="View Logs">
+                        <i class="bi bi-journal-text"></i>
+                        <span>View Logs</span>
+                    </a>
+                </li>
+                
+                <!-- Attendance with Submenu -->
+                <li class="zoho-sidebar-item zoho-sidebar-dropdown {% if 'leave' in request.resolver_match.url_name or 'compoff' in request.resolver_match.url_name or 'wfh' in request.resolver_match.url_name %}open{% endif %}">
+                    <a href="javascript:void(0)" class="zoho-sidebar-link zoho-sidebar-toggle-submenu {% if 'leave' in request.resolver_match.url_name or 'compoff' in request.resolver_match.url_name or 'wfh' in request.resolver_match.url_name %}active{% endif %}" title="Attendance">
+                        <i class="bi bi-calendar-check"></i>
+                        <span>Attendance</span>
+                        <i class="bi bi-chevron-down zoho-submenu-arrow"></i>
+                    </a>
+                    <ul class="zoho-sidebar-submenu">
+                        <li>
+                            <a href="{% url 'adminpanel:leave_list' %}" class="zoho-submenu-link {% if 'leave' in request.resolver_match.url_name %}active{% endif %}">
+                                <i class="bi bi-calendar-x"></i>
+                                <span>Leave Requests</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'adminpanel:compoff_list' %}" class="zoho-submenu-link {% if 'compoff' in request.resolver_match.url_name %}active{% endif %}">
+                                <i class="bi bi-calendar-plus"></i>
+                                <span>Comp-Off</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'adminpanel:wfh_list' %}" class="zoho-submenu-link {% if 'wfh' in request.resolver_match.url_name %}active{% endif %}">
+                                <i class="bi bi-house"></i>
+                                <span>Work From Home</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Sidebar Footer - User Profile & Logout -->
+        <div class="zoho-sidebar-footer">
+            <div class="zoho-sidebar-user">
+                <div class="zoho-user-avatar-sm">
+                    {{ request.user.username|slice:":2"|upper }}
+                </div>
+                <div class="zoho-user-info">
+                    <span class="zoho-user-name">{{ request.user.username }}</span>
+                    <span class="zoho-user-role">Administrator</span>
+                </div>
+            </div>
+            <a href="{% url 'accounts:logout' %}" class="zoho-sidebar-logout" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+        
+        <!-- Sidebar Toggle Button -->
+        <button class="zoho-sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="zoho-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Django Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="django-message" data-type="{% if message.tags == 'error' %}error{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}" style="display: none;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- AOS Animation -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js"></script>
+    
+    <!-- Zoho Admin JS -->
+    <script src="{% static 'js/zoho-admin.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

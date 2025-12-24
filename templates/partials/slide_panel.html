@@ -1,0 +1,65 @@
+<!-- Reusable Slide Panel Component -->
+<!-- Include this in your base template -->
+
+<!-- Slide Panel Overlay -->
+<div class="slide-panel-overlay" id="slidePanelOverlay"></div>
+
+<!-- Slide Panel -->
+<div class="slide-panel" id="slidePanel">
+    <div class="slide-panel-header">
+        <h3 class="slide-panel-title" id="slidePanelTitle">Panel</h3>
+        <button class="slide-panel-close" id="slidePanelClose" type="button">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    <div class="slide-panel-body" id="slidePanelBody">
+        <!-- Dynamic content loaded here -->
+    </div>
+</div>
+
+<script>
+// Slide Panel Functions
+function openSlidePanel(title, content) {
+    const panel = document.getElementById('slidePanel');
+    const overlay = document.getElementById('slidePanelOverlay');
+    const titleEl = document.getElementById('slidePanelTitle');
+    const bodyEl = document.getElementById('slidePanelBody');
+    
+    titleEl.textContent = title;
+    bodyEl.innerHTML = content;
+    
+    panel.classList.add('active');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSlidePanel() {
+    const panel = document.getElementById('slidePanel');
+    const overlay = document.getElementById('slidePanelOverlay');
+    
+    panel.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const overlay = document.getElementById('slidePanelOverlay');
+    const closeBtn = document.getElementById('slidePanelClose');
+    
+    if (overlay) {
+        overlay.addEventListener('click', closeSlidePanel);
+    }
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeSlidePanel);
+    }
+    
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeSlidePanel();
+        }
+    });
+});
+</script>

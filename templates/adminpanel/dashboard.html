@@ -1,0 +1,243 @@
+{% extends 'adminpanel/base_admin.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Dashboard</h1>
+        <p class="zoho-page-subtitle">Welcome back! Here's an overview of your system.</p>
+    </div>
+    <div class="zoho-btn-group">
+        <a href="{% url 'adminpanel:export_csv' %}" class="zoho-btn zoho-btn-secondary">
+            <i class="bi bi-download"></i>
+            Export CSV
+        </a>
+        <a href="{% url 'adminpanel:user_list' %}" class="zoho-btn zoho-btn-primary">
+            <i class="bi bi-people"></i>
+            Manage Users
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="zoho-stats-grid" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon blue">
+            <i class="bi bi-journal-text"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ total_logs }}</div>
+            <div class="zoho-stat-label">Total Logs</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon green">
+            <i class="bi bi-people-fill"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ total_users }}</div>
+            <div class="zoho-stat-label">Total Users</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon yellow">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value" id="high-priority-count">0</div>
+            <div class="zoho-stat-label">High Priority</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon purple">
+            <i class="bi bi-calendar-check"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ logs|length }}</div>
+            <div class="zoho-stat-label">Today's Logs</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+    <!-- Priority Distribution Chart -->
+    <div class="zoho-card" data-aos="fade-up" data-aos-delay="200">
+        <div class="zoho-card-header">
+            <h3 class="zoho-card-title">
+                <i class="bi bi-pie-chart" style="margin-right: 8px; color: var(--zoho-accent);"></i>
+                Priority Distribution
+            </h3>
+        </div>
+        <div class="zoho-card-body">
+            <canvas id="priorityChart" height="250"></canvas>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="zoho-card" data-aos="fade-up" data-aos-delay="300">
+        <div class="zoho-card-header">
+            <h3 class="zoho-card-title">
+                <i class="bi bi-lightning" style="margin-right: 8px; color: var(--zoho-neon-yellow);"></i>
+                Quick Actions
+            </h3>
+        </div>
+        <div class="zoho-card-body">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <a href="{% url 'adminpanel:add_user' %}" class="zoho-btn zoho-btn-secondary" style="justify-content: flex-start;">
+                    <i class="bi bi-person-plus"></i>
+                    Add User
+                </a>
+                <a href="{% url 'adminpanel:user_list' %}" class="zoho-btn zoho-btn-secondary" style="justify-content: flex-start;">
+                    <i class="bi bi-people"></i>
+                    View Users
+                </a>
+                <a href="{% url 'adminpanel:filter_logs' %}" class="zoho-btn zoho-btn-secondary" style="justify-content: flex-start;">
+                    <i class="bi bi-funnel"></i>
+                    Filter Logs
+                </a>
+                <a href="{% url 'adminpanel:analytics' %}" class="zoho-btn zoho-btn-secondary" style="justify-content: flex-start;">
+                    <i class="bi bi-graph-up"></i>
+                    Analytics
+                </a>
+                <a href="{% url 'adminpanel:export_csv' %}" class="zoho-btn zoho-btn-secondary" style="justify-content: flex-start;">
+                    <i class="bi bi-file-earmark-csv"></i>
+                    Export CSV
+                </a>
+                <a href="{% url 'adminpanel:export_excel' %}" class="zoho-btn zoho-btn-secondary" style="justify-content: flex-start;">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    Export Excel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Logs Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="400">
+    <div class="zoho-table-toolbar">
+        <h3 class="zoho-card-title" style="margin: 0;">
+            <i class="bi bi-clock-history" style="margin-right: 8px; color: var(--zoho-accent);"></i>
+            Recent Logs
+        </h3>
+        <a href="{% url 'adminpanel:filter_logs' %}" class="zoho-btn zoho-btn-secondary" style="padding: 8px 16px; font-size: 13px;">
+            View All
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="zoho-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>USER</th>
+                    <th>TITLE</th>
+                    <th>PRIORITY</th>
+                    <th>DATE</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs|slice:":10" %}
+                <tr>
+                    <td>
+                        <span style="font-weight: 600; color: var(--zoho-accent);">#{{ log.id }}</span>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--zoho-accent) 0%, var(--zoho-neon-purple) 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white;">
+                                {{ log.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div style="font-weight: 500;">{{ log.username }}</div>
+                                <div style="font-size: 12px; color: var(--zoho-text-muted);">{{ log.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ log.title|truncatechars:40 }}</td>
+                    <td>
+                        <span class="zoho-badge {% if log.priority == 'High' %}coordinator{% elif log.priority == 'Medium' %}designer{% else %}developer{% endif %}">
+                            {{ log.priority }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if log.log_date %}
+                            {{ log.log_date|date:"M d, Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="zoho-empty-state" style="padding: 40px;">
+                            <div class="zoho-empty-icon" style="width: 60px; height: 60px; font-size: 24px;">
+                                <i class="bi bi-journal-x"></i>
+                            </div>
+                            <h3 class="zoho-empty-title">No Logs Yet</h3>
+                            <p class="zoho-empty-text">Logs will appear here once users start creating them.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Priority data from Django
+    const priorityStats = {{ priority_stats|safe }};
+    
+    // Update high priority count
+    document.getElementById('high-priority-count').textContent = priorityStats['High'] || 0;
+    
+    // Priority Distribution Chart
+    const ctx = document.getElementById('priorityChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Low', 'Medium', 'High'],
+            datasets: [{
+                data: [priorityStats['Low'] || 0, priorityStats['Medium'] || 0, priorityStats['High'] || 0],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(139, 92, 246, 1)',
+                    'rgba(245, 158, 11, 1)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#ffffffd9',
+                        padding: 20,
+                        font: {
+                            family: 'Inter',
+                            size: 12
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+</script>
+{% endblock %}

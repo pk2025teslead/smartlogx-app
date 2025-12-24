@@ -1,0 +1,54 @@
+{% extends 'userpanel/base_user.html' %}
+
+{% block title %}Attendance{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Attendance Management</h1>
+        <p class="zoho-page-subtitle">Track your attendance records</p>
+    </div>
+</div>
+
+<!-- Coming Soon Card -->
+<div class="zoho-card" style="max-width: 600px; margin: 60px auto; text-align: center;" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-card-body" style="padding: 60px 40px;">
+        <div style="width: 100px; height: 100px; background: linear-gradient(135deg, var(--zoho-accent) 0%, var(--zoho-neon-purple) 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 40px; color: white;">
+            <i class="bi bi-calendar-check"></i>
+        </div>
+        
+        <h2 style="font-size: 28px; font-weight: 700; color: var(--zoho-text-primary); margin-bottom: 12px;">
+            Coming Soon
+        </h2>
+        
+        <p style="font-size: 16px; color: var(--zoho-text-muted); margin-bottom: 32px; line-height: 1.6;">
+            The Attendance Management module is currently under development. 
+            You'll soon be able to track your daily attendance, view reports, 
+            and manage leave requests.
+        </p>
+        
+        <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+            <div style="padding: 16px 24px; background: var(--zoho-bg-secondary); border-radius: var(--zoho-radius-md); text-align: center;">
+                <i class="bi bi-clock-history" style="font-size: 24px; color: var(--zoho-accent); display: block; margin-bottom: 8px;"></i>
+                <span style="font-size: 13px; color: var(--zoho-text-secondary);">Time Tracking</span>
+            </div>
+            <div style="padding: 16px 24px; background: var(--zoho-bg-secondary); border-radius: var(--zoho-radius-md); text-align: center;">
+                <i class="bi bi-calendar-range" style="font-size: 24px; color: var(--zoho-neon-green); display: block; margin-bottom: 8px;"></i>
+                <span style="font-size: 13px; color: var(--zoho-text-secondary);">Leave Management</span>
+            </div>
+            <div style="padding: 16px 24px; background: var(--zoho-bg-secondary); border-radius: var(--zoho-radius-md); text-align: center;">
+                <i class="bi bi-graph-up" style="font-size: 24px; color: var(--zoho-neon-purple); display: block; margin-bottom: 8px;"></i>
+                <span style="font-size: 13px; color: var(--zoho-text-secondary);">Reports</span>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px;">
+            <a href="{% url 'userpanel:dashboard' %}" class="zoho-btn zoho-btn-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

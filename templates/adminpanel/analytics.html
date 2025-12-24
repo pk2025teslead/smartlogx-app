@@ -1,0 +1,254 @@
+{% extends 'adminpanel/base_admin.html' %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Analytics</h1>
+        <p class="zoho-page-subtitle">Insights and statistics about your log data</p>
+    </div>
+    <div class="zoho-btn-group">
+        <a href="{% url 'adminpanel:export_csv' %}" class="zoho-btn zoho-btn-secondary">
+            <i class="bi bi-download"></i>
+            Export Report
+        </a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="zoho-stats-grid" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon blue">
+            <i class="bi bi-journal-text"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ total_logs }}</div>
+            <div class="zoho-stat-label">Total Logs</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon green">
+            <i class="bi bi-check-circle"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value" id="low-count">0</div>
+            <div class="zoho-stat-label">Low Priority</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon purple">
+            <i class="bi bi-exclamation-circle"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value" id="medium-count">0</div>
+            <div class="zoho-stat-label">Medium Priority</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon yellow">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value" id="high-count">0</div>
+            <div class="zoho-stat-label">High Priority</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+    <!-- Priority Distribution Chart -->
+    <div class="zoho-card" data-aos="fade-up" data-aos-delay="200">
+        <div class="zoho-card-header">
+            <h3 class="zoho-card-title">
+                <i class="bi bi-pie-chart" style="margin-right: 8px; color: var(--zoho-accent);"></i>
+                Priority Distribution
+            </h3>
+        </div>
+        <div class="zoho-card-body">
+            <canvas id="priorityPieChart" height="300"></canvas>
+        </div>
+    </div>
+    
+    <!-- Priority Bar Chart -->
+    <div class="zoho-card" data-aos="fade-up" data-aos-delay="300">
+        <div class="zoho-card-header">
+            <h3 class="zoho-card-title">
+                <i class="bi bi-bar-chart" style="margin-right: 8px; color: var(--zoho-neon-green);"></i>
+                Priority Breakdown
+            </h3>
+        </div>
+        <div class="zoho-card-body">
+            <canvas id="priorityBarChart" height="300"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Card -->
+<div class="zoho-card" data-aos="fade-up" data-aos-delay="400">
+    <div class="zoho-card-header">
+        <h3 class="zoho-card-title">
+            <i class="bi bi-info-circle" style="margin-right: 8px; color: var(--zoho-neon-purple);"></i>
+            Summary
+        </h3>
+    </div>
+    <div class="zoho-card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
+            <div style="padding: 20px; background: var(--zoho-bg-secondary); border-radius: var(--zoho-radius-md); border-left: 4px solid var(--zoho-accent);">
+                <h4 style="font-size: 14px; color: var(--zoho-text-muted); margin-bottom: 8px;">Total Entries</h4>
+                <p style="font-size: 28px; font-weight: 700; color: var(--zoho-text-primary); margin: 0;">{{ total_logs }}</p>
+            </div>
+            <div style="padding: 20px; background: var(--zoho-bg-secondary); border-radius: var(--zoho-radius-md); border-left: 4px solid var(--zoho-neon-green);">
+                <h4 style="font-size: 14px; color: var(--zoho-text-muted); margin-bottom: 8px;">Most Common Priority</h4>
+                <p style="font-size: 28px; font-weight: 700; color: var(--zoho-neon-green); margin: 0;" id="most-common">-</p>
+            </div>
+            <div style="padding: 20px; background: var(--zoho-bg-secondary); border-radius: var(--zoho-radius-md); border-left: 4px solid var(--zoho-neon-yellow);">
+                <h4 style="font-size: 14px; color: var(--zoho-text-muted); margin-bottom: 8px;">High Priority Rate</h4>
+                <p style="font-size: 28px; font-weight: 700; color: var(--zoho-neon-yellow); margin: 0;" id="high-rate">0%</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Priority data from Django
+    const priorityStats = {{ priority_stats|safe }};
+    
+    // Update stat cards
+    document.getElementById('low-count').textContent = priorityStats['Low'] || 0;
+    document.getElementById('medium-count').textContent = priorityStats['Medium'] || 0;
+    document.getElementById('high-count').textContent = priorityStats['High'] || 0;
+    
+    // Calculate most common and high rate
+    const total = (priorityStats['Low'] || 0) + (priorityStats['Medium'] || 0) + (priorityStats['High'] || 0);
+    
+    if (total > 0) {
+        // Most common
+        let mostCommon = 'Low';
+        let maxCount = priorityStats['Low'] || 0;
+        if ((priorityStats['Medium'] || 0) > maxCount) {
+            mostCommon = 'Medium';
+            maxCount = priorityStats['Medium'];
+        }
+        if ((priorityStats['High'] || 0) > maxCount) {
+            mostCommon = 'High';
+        }
+        document.getElementById('most-common').textContent = mostCommon;
+        
+        // High rate
+        const highRate = ((priorityStats['High'] || 0) / total * 100).toFixed(1);
+        document.getElementById('high-rate').textContent = highRate + '%';
+    }
+    
+    // Chart.js default options for dark theme
+    Chart.defaults.color = '#ffffffd9';
+    Chart.defaults.borderColor = '#2e2f33';
+    
+    // Priority Pie Chart
+    const pieCtx = document.getElementById('priorityPieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Low', 'Medium', 'High'],
+            datasets: [{
+                data: [priorityStats['Low'] || 0, priorityStats['Medium'] || 0, priorityStats['High'] || 0],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(139, 92, 246, 1)',
+                    'rgba(245, 158, 11, 1)'
+                ],
+                borderWidth: 2,
+                hoverOffset: 15
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: {
+                            family: 'Inter',
+                            size: 13
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                }
+            },
+            cutout: '60%'
+        }
+    });
+    
+    // Priority Bar Chart
+    const barCtx = document.getElementById('priorityBarChart').getContext('2d');
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Low', 'Medium', 'High'],
+            datasets: [{
+                label: 'Number of Logs',
+                data: [priorityStats['Low'] || 0, priorityStats['Medium'] || 0, priorityStats['High'] || 0],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(139, 92, 246, 1)',
+                    'rgba(245, 158, 11, 1)'
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        font: {
+                            family: 'Inter'
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            family: 'Inter',
+                            weight: 500
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

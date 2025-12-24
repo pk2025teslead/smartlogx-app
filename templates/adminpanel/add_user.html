@@ -1,0 +1,108 @@
+{% extends 'adminpanel/base_admin.html' %}
+
+{% block title %}Add User{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Add New User</h1>
+        <p class="zoho-page-subtitle">Create a new user account</p>
+    </div>
+    <a href="{% url 'adminpanel:user_list' %}" class="zoho-btn zoho-btn-secondary">
+        <i class="bi bi-arrow-left"></i>
+        Back to Users
+    </a>
+</div>
+
+<!-- Add User Form -->
+<div class="zoho-card zoho-form-card" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-card-header">
+        <h2 class="zoho-card-title">
+            <i class="bi bi-person-plus" style="margin-right: 8px; color: var(--zoho-accent);"></i>
+            User Information
+        </h2>
+    </div>
+    <div class="zoho-card-body">
+        <form method="POST" class="zoho-form" autocomplete="off">
+            {% csrf_token %}
+            
+            <div class="zoho-form-row">
+                <div class="zoho-form-group">
+                    <label class="zoho-form-label required">Employee ID</label>
+                    <input type="text" name="emp_id" class="zoho-form-input" placeholder="e.g., EMP001" 
+                           value="{{ form_data.emp_id|default:'' }}" required>
+                </div>
+                <div class="zoho-form-group">
+                    <label class="zoho-form-label required">Employee Name</label>
+                    <input type="text" name="emp_name" class="zoho-form-input" placeholder="Full Name" 
+                           value="{{ form_data.emp_name|default:'' }}" required>
+                </div>
+            </div>
+            
+            <div class="zoho-form-row">
+                <div class="zoho-form-group">
+                    <label class="zoho-form-label required">Email Address</label>
+                    <input type="email" name="email" class="zoho-form-input" placeholder="email@example.com" 
+                           value="{{ form_data.email|default:'' }}" required>
+                </div>
+                <div class="zoho-form-group">
+                    <label class="zoho-form-label">Mobile Number</label>
+                    <input type="text" name="mobile_number" class="zoho-form-input" placeholder="10-digit number" 
+                           value="{{ form_data.mobile_number|default:'' }}" maxlength="10">
+                </div>
+            </div>
+            
+            <div class="zoho-form-row">
+                <div class="zoho-form-group">
+                    <label class="zoho-form-label required">Role</label>
+                    <select name="role" class="zoho-form-input" required>
+                        <option value="">Select Role</option>
+                        {% for role in roles %}
+                        <option value="{{ role }}" {% if form_data.role == role %}selected{% endif %}>{{ role }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="zoho-form-group">
+                    <label class="zoho-form-label">Roll / Department</label>
+                    <input type="text" name="roll" class="zoho-form-input" placeholder="e.g., Backend Team" 
+                           value="{{ form_data.roll|default:'' }}">
+                </div>
+            </div>
+            
+            <!-- Password Info Notice -->
+            <div class="zoho-info-box" style="background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 100%); border: 1px solid #b3d7f5; border-radius: 8px; padding: 16px 20px; margin-top: 8px;">
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="bi bi-envelope-check" style="color: #0c5460; font-size: 24px; margin-top: 2px;"></i>
+                    <div>
+                        <h4 style="color: #0c5460; font-size: 14px; font-weight: 600; margin: 0 0 6px 0;">
+                            Automatic Password & Welcome Email
+                        </h4>
+                        <p style="color: #0c5460; font-size: 13px; margin: 0; line-height: 1.5;">
+                            A secure temporary password will be auto-generated and sent to the user's email address along with login instructions. 
+                            The user will be required to change their password on first login.
+                        </p>
+                        <p style="color: #856404; font-size: 12px; margin: 8px 0 0 0; line-height: 1.4;">
+                            <i class="bi bi-clock"></i> Temporary password expires in 24 hours.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="zoho-btn-group" style="margin-top: 32px;">
+                <button type="submit" class="zoho-btn zoho-btn-primary">
+                    <i class="bi bi-check-lg"></i>
+                    Create User
+                </button>
+                <a href="{% url 'adminpanel:user_list' %}" class="zoho-btn zoho-btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- No additional JS needed - password is auto-generated -->
+{% endblock %}

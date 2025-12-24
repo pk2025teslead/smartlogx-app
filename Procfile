@@ -1,0 +1,1 @@
+web: gunicorn smartlogx.wsgi --log-file -

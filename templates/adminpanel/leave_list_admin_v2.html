@@ -1,0 +1,426 @@
+{% extends 'adminpanel/base_admin.html' %}
+{% load static %}
+
+{% block title %}Leave Management{% endblock %}
+
+{% block content %}
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Leave Management</h1>
+        <p class="zoho-page-subtitle">Manage employee leave requests with audit trail</p>
+    </div>
+</div>
+
+<!-- Month Nav & Stats -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;" data-aos="fade-up">
+    <div class="month-nav">
+        <button class="month-nav-btn" onclick="navigateMonth({{year}},{{month}},-1)"><i class="bi bi-chevron-left"></i></button>
+        <div class="month-nav-current">{{ month_name }} {{ year }}</div>
+        <button class="month-nav-btn" onclick="navigateMonth({{year}},{{month}},1)" {% if is_current_month %}disabled{% endif %}><i class="bi bi-chevron-right"></i></button>
+    </div>
+    <div style="display:flex;gap:12px;">
+        <div class="zoho-stat-card" style="padding:10px 16px;"><div class="zoho-stat-icon green" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-check-circle"></i></div><div><div class="zoho-stat-value" style="font-size:18px;">{{ stats.approved }}</div><div class="zoho-stat-label" style="font-size:10px;">Approved</div></div></div>
+        <div class="zoho-stat-card" style="padding:10px 16px;"><div class="zoho-stat-icon yellow" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-hourglass-split"></i></div><div><div class="zoho-stat-value" style="font-size:18px;">{{ stats.pending }}</div><div class="zoho-stat-label" style="font-size:10px;">Pending</div></div></div>
+        <div class="zoho-stat-card" style="padding:10px 16px;"><div class="zoho-stat-icon" style="width:32px;height:32px;font-size:14px;background:rgba(239,68,68,0.15);color:#ef4444;"><i class="bi bi-x-circle"></i></div><div><div class="zoho-stat-value" style="font-size:18px;">{{ stats.rejected }}</div><div class="zoho-stat-label" style="font-size:10px;">Rejected</div></div></div>
+        <div class="zoho-stat-card" style="padding:10px 16px;"><div class="zoho-stat-icon" style="width:32px;height:32px;font-size:14px;background:rgba(107,114,128,0.15);color:#6b7280;"><i class="bi bi-slash-circle"></i></div><div><div class="zoho-stat-value" style="font-size:18px;">{{ stats.cancelled }}</div><div class="zoho-stat-label" style="font-size:10px;">Cancelled</div></div></div>
+    </div>
+</div>
+
+<!-- Filters & Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box"><i class="bi bi-search"></i><input type="text" class="zoho-search-input" placeholder="Search..." onkeyup="searchTable(this.value)"></div>
+        <div class="zoho-filter-group">
+            <select class="zoho-select" id="statusFilter" onchange="applyFilters()">
+                <option value="">All Status</option>
+                {% for status in status_options %}
+                <option value="{{ status }}" {% if current_status == status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+            <select class="zoho-select" id="userFilter" onchange="applyFilters()">
+                <option value="">All Users</option>
+                {% for u in users %}
+                <option value="{{ u.ID }}" {% if current_user == u.ID|stringformat:"s" %}selected{% endif %}>{{ u.EMP_NAME }} ({{ u.EMP_ID }})</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="zoho-table" id="leaveTable">
+            <thead><tr>
+                <th style="width:50px;">S.No</th>
+                <th>User</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Notes</th>
+                <th>Status</th>
+                <th>Edit Window</th>
+                <th style="width:200px;">Action</th>
+            </tr></thead>
+            <tbody>
+            {% for leave in leaves %}
+            <tr data-id="{{ leave.id }}" data-status="{{ leave.status }}">
+                <td>{{ forloop.counter }}</td>
+                <td><div style="font-weight:500;">{{ leave.emp_name }}</div><div style="font-size:11px;color:var(--zoho-text-muted);">{{ leave.emp_id }}</div></td>
+                <td>{{ leave.leave_date_display }}</td>
+                <td><span class="zoho-badge {% if leave.leave_type == 'PLANNED' %}developer{% elif leave.leave_type == 'CASUAL' %}tester{% elif leave.leave_type == 'EMERGENCY' %}coordinator{% else %}designer{% endif %}">{{ leave.leave_type }}</span></td>
+                <td>{{ leave.notes|default:"-"|truncatechars:30 }}</td>
+                <td><span class="status-badge {{ leave.status|lower }}">{% if leave.status == 'APPROVED' %}<i class="bi bi-check-circle"></i>{% elif leave.status == 'REJECTED' %}<i class="bi bi-x-circle"></i>{% elif leave.status == 'CANCELLED' %}<i class="bi bi-slash-circle"></i>{% else %}<i class="bi bi-hourglass-split"></i>{% endif %} {{ leave.status }}</span></td>
+                <td>
+                    {% if leave.is_currently_editable %}
+                    <span class="edit-timer"><i class="bi bi-clock"></i> Active</span>
+                    {% elif leave.status == 'PENDING' %}
+                    <span class="edit-expired"><i class="bi bi-lock"></i> Expired</span>
+                    {% else %}-{% endif %}
+                </td>
+                <td>
+                    <div class="action-btns">
+                        <button class="action-btn view" onclick="viewLeave({{leave.id}})" title="View"><i class="bi bi-eye"></i></button>
+                        <button class="action-btn edit" onclick="editLeave({{leave.id}})" title="Edit"><i class="bi bi-pencil"></i></button>
+                        {% if leave.status == 'PENDING' %}
+                        <button class="action-btn approve" onclick="approveLeave({{leave.id}})" title="Approve"><i class="bi bi-check-lg"></i></button>
+                        <button class="action-btn reject" onclick="rejectLeave({{leave.id}})" title="Reject"><i class="bi bi-x-lg"></i></button>
+                        {% endif %}
+                        <button class="action-btn audit" onclick="viewAudit({{leave.id}})" title="Audit Trail"><i class="bi bi-clock-history"></i></button>
+                        <button class="action-btn delete" onclick="deleteLeave({{leave.id}})" title="Delete"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8"><div class="zoho-empty-state"><div class="zoho-empty-icon"><i class="bi bi-calendar-x"></i></div><h3 class="zoho-empty-title">No Leave Records</h3><p class="zoho-empty-text">No leave requests for {{ month_name }}.</p></div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'adminpanel/_slide_panel.html' %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:500;}
+.status-badge.approved{background:rgba(16,185,129,0.15);color:#10b981;}
+.status-badge.rejected{background:rgba(239,68,68,0.15);color:#ef4444;}
+.status-badge.pending{background:rgba(245,158,11,0.15);color:#f59e0b;}
+.status-badge.cancelled{background:rgba(107,114,128,0.15);color:#6b7280;}
+.action-btns{display:flex;gap:4px;}
+.action-btn{width:28px;height:28px;border:none;border-radius:6px;background:transparent;color:var(--zoho-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.action-btn:hover{background:var(--zoho-bg-hover);}
+.action-btn.view:hover{color:#3b82f6;}
+.action-btn.edit:hover{color:#f59e0b;}
+.action-btn.approve:hover{color:#10b981;background:rgba(16,185,129,0.15);}
+.action-btn.reject:hover{color:#ef4444;background:rgba(239,68,68,0.15);}
+.action-btn.audit:hover{color:#8b5cf6;background:rgba(139,92,246,0.15);}
+.action-btn.delete:hover{color:#ef4444;}
+.month-nav{display:flex;align-items:center;gap:16px;}
+.month-nav-btn{width:36px;height:36px;border-radius:6px;border:1px solid var(--zoho-border);background:var(--zoho-bg-secondary);color:var(--zoho-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.month-nav-btn:hover:not(:disabled){background:var(--zoho-bg-hover);color:var(--zoho-text-primary);}
+.month-nav-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.month-nav-current{font-size:16px;font-weight:600;min-width:150px;text-align:center;}
+.edit-timer{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.15);color:#3b82f6;font-size:11px;}
+.edit-expired{display:inline-flex;align-items:center;gap:4px;color:#6b7280;font-size:11px;}
+.audit-item{padding:12px;border-radius:8px;background:var(--zoho-bg-secondary);margin-bottom:10px;border-left:3px solid #3b82f6;}
+.audit-item.CREATED{border-left-color:#10b981;}
+.audit-item.EDITED{border-left-color:#f59e0b;}
+.audit-item.APPROVED{border-left-color:#10b981;}
+.audit-item.REJECTED{border-left-color:#ef4444;}
+.audit-item.CANCELLED,.audit-item.DELETED{border-left-color:#6b7280;}
+.audit-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.audit-action{font-weight:600;font-size:13px;}
+.audit-time{font-size:11px;color:var(--zoho-text-muted);}
+.audit-actor{font-size:12px;color:var(--zoho-text-secondary);}
+.audit-reason{font-size:12px;color:#ef4444;margin-top:6px;padding:6px 10px;background:rgba(239,68,68,0.1);border-radius:4px;}
+</style>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+const csrfToken = '{{ csrf_token }}';
+
+function navigateMonth(year, month, direction) {
+    let newMonth = month + direction;
+    let newYear = year;
+    if (newMonth > 12) { newMonth = 1; newYear++; }
+    else if (newMonth < 1) { newMonth = 12; newYear--; }
+    const status = document.getElementById('statusFilter').value;
+    const user = document.getElementById('userFilter').value;
+    let url = `?year=${newYear}&month=${newMonth}`;
+    if (status) url += `&status=${status}`;
+    if (user) url += `&user_id=${user}`;
+    window.location.href = url;
+}
+
+function applyFilters() {
+    const status = document.getElementById('statusFilter').value;
+    const user = document.getElementById('userFilter').value;
+    let url = `?year={{year}}&month={{month}}`;
+    if (status) url += `&status=${status}`;
+    if (user) url += `&user_id=${user}`;
+    window.location.href = url;
+}
+
+function searchTable(query) {
+    const rows = document.querySelectorAll('#leaveTable tbody tr');
+    query = query.toLowerCase();
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+
+// View Leave with Audit
+function viewLeave(leaveId) {
+    showLoader();
+    fetch(`/adminpanel/attendance/leave/${leaveId}/`)
+        .then(r => r.json())
+        .then(data => {
+            hideLoader();
+            if (data.success) {
+                const leave = data.leave;
+                const statusClass = leave.status.toLowerCase();
+                let auditHtml = '';
+                if (data.audit_trail && data.audit_trail.length > 0) {
+                    auditHtml = '<h4 style="margin-top:24px;margin-bottom:12px;font-size:14px;color:var(--zoho-text-secondary);">Recent Activity</h4>';
+                    data.audit_trail.slice(0, 5).forEach(a => {
+                        auditHtml += `<div class="audit-item ${a.action}">
+                            <div class="audit-header">
+                                <span class="audit-action">${a.action}</span>
+                                <span class="audit-time">${a.created_at}</span>
+                            </div>
+                            <div class="audit-actor">${a.actor_name} (${a.actor_role})</div>
+                            ${a.reason ? `<div class="audit-reason">${escapeHtml(a.reason)}</div>` : ''}
+                        </div>`;
+                    });
+                }
+                
+                const viewHtml = `
+                    <div class="log-view-header">
+                        <div class="log-view-icon" style="background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);"><i class="bi bi-calendar-x"></i></div>
+                        <div class="log-view-title"><h4>${leave.leave_type} Leave</h4><p>${leave.user_name} (${leave.user_id})</p></div>
+                    </div>
+                    <div class="log-view-meta">
+                        <div class="log-view-meta-item"><div class="log-view-meta-label">Leave Date</div><div class="log-view-meta-value">${leave.leave_date_display}</div></div>
+                        <div class="log-view-meta-item"><div class="log-view-meta-label">Status</div><div class="log-view-meta-value"><span class="status-badge ${statusClass}">${leave.status}</span></div></div>
+                        <div class="log-view-meta-item"><div class="log-view-meta-label">Submitted</div><div class="log-view-meta-value">${leave.created_at || '-'}</div></div>
+                        ${leave.editable_until ? `<div class="log-view-meta-item"><div class="log-view-meta-label">Edit Window Until</div><div class="log-view-meta-value">${leave.editable_until}</div></div>` : ''}
+                        ${leave.approved_at ? `<div class="log-view-meta-item"><div class="log-view-meta-label">Processed</div><div class="log-view-meta-value">${leave.approved_at} by ${leave.approver_name}</div></div>` : ''}
+                    </div>
+                    ${leave.notes ? `<div class="log-view-content"><div class="log-view-content-label">Notes</div><div class="log-view-content-text">${escapeHtml(leave.notes)}</div></div>` : ''}
+                    ${leave.approval_notes ? `<div class="log-view-content" style="margin-top:16px;border-left-color:${leave.status === 'APPROVED' ? '#10b981' : '#ef4444'};"><div class="log-view-content-label">Admin Notes</div><div class="log-view-content-text">${escapeHtml(leave.approval_notes)}</div></div>` : ''}
+                    ${auditHtml}
+                `;
+                openSlidePanel('Leave Details', viewHtml);
+            }
+        });
+}
+
+// Edit Leave
+function editLeave(leaveId) {
+    showLoader();
+    fetch(`/adminpanel/attendance/leave/${leaveId}/`)
+        .then(r => r.json())
+        .then(data => {
+            hideLoader();
+            if (data.success) {
+                const leave = data.leave;
+                const formHtml = `
+                    <form id="leaveEditForm" class="zoho-form">
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label">Employee</label>
+                            <input type="text" class="zoho-form-input" value="${leave.user_name} (${leave.user_id})" disabled>
+                        </div>
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label required">Leave Date</label>
+                            <input type="date" name="leave_date" class="zoho-form-input" required value="${leave.leave_date}">
+                        </div>
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label required">Leave Type</label>
+                            <select name="leave_type" class="zoho-form-input" required>
+                                {% for type in leave_types %}
+                                <option value="{{ type }}" ${leave.leave_type === '{{ type }}' ? 'selected' : ''}>{{ type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label">Notes</label>
+                            <textarea name="notes" class="zoho-form-input" rows="4">${leave.notes || ''}</textarea>
+                        </div>
+                        <div class="zoho-btn-group" style="margin-top:24px;">
+                            <button type="submit" class="zoho-btn zoho-btn-primary"><i class="bi bi-check-lg"></i> Update</button>
+                            <button type="button" class="zoho-btn zoho-btn-secondary" onclick="closeSlidePanel()">Cancel</button>
+                        </div>
+                    </form>
+                `;
+                openSlidePanel('Edit Leave', formHtml);
+                setTimeout(() => {
+                    document.getElementById('leaveEditForm').addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        handleLeaveEdit(e, leaveId);
+                    });
+                }, 100);
+            }
+        });
+}
+
+function handleLeaveEdit(e, leaveId) {
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const data = {
+        leave_date: form.leave_date.value,
+        leave_type: form.leave_type.value,
+        notes: form.notes.value
+    };
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Updating...';
+    
+    fetch(`/adminpanel/attendance/leave/${leaveId}/update/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeSlidePanel();
+            Swal.fire({ title: 'Updated!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } }).then(() => location.reload());
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg"></i> Update';
+            Swal.fire({ title: 'Error', text: data.error, icon: 'error', customClass: { popup: 'zoho-swal' } });
+        }
+    });
+}
+
+// Approve Leave
+function approveLeave(leaveId) {
+    Swal.fire({
+        title: 'Approve Leave?',
+        input: 'textarea',
+        inputLabel: 'Admin Notes (optional)',
+        inputPlaceholder: 'Add any notes...',
+        showCancelButton: true,
+        confirmButtonText: 'Approve',
+        confirmButtonColor: '#10b981',
+        customClass: { popup: 'zoho-swal' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoader();
+            fetch(`/adminpanel/attendance/leave/${leaveId}/approve/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ approval_notes: result.value || '' })
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoader();
+                if (data.success) {
+                    Swal.fire({ title: 'Approved!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } }).then(() => location.reload());
+                } else {
+                    Swal.fire({ title: 'Error', text: data.error || data.message, icon: 'error', customClass: { popup: 'zoho-swal' } });
+                }
+            });
+        }
+    });
+}
+
+// Reject Leave
+function rejectLeave(leaveId) {
+    Swal.fire({
+        title: 'Reject Leave?',
+        input: 'textarea',
+        inputLabel: 'Rejection Reason (required)',
+        inputPlaceholder: 'Please provide a reason...',
+        inputValidator: (value) => { if (!value) return 'Reason is required!'; },
+        showCancelButton: true,
+        confirmButtonText: 'Reject',
+        confirmButtonColor: '#ef4444',
+        customClass: { popup: 'zoho-swal' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoader();
+            fetch(`/adminpanel/attendance/leave/${leaveId}/reject/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ reason: result.value, approval_notes: result.value })
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoader();
+                if (data.success) {
+                    Swal.fire({ title: 'Rejected!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } }).then(() => location.reload());
+                } else {
+                    Swal.fire({ title: 'Error', text: data.error || data.message, icon: 'error', customClass: { popup: 'zoho-swal' } });
+                }
+            });
+        }
+    });
+}
+
+// View Audit Trail
+function viewAudit(leaveId) {
+    showLoader();
+    fetch(`/adminpanel/attendance/leave/${leaveId}/audit/`)
+        .then(r => r.json())
+        .then(data => {
+            hideLoader();
+            if (data.success) {
+                let auditHtml = '<div style="max-height:500px;overflow-y:auto;">';
+                if (data.audit_trail && data.audit_trail.length > 0) {
+                    data.audit_trail.forEach(a => {
+                        auditHtml += `<div class="audit-item ${a.action}">
+                            <div class="audit-header">
+                                <span class="audit-action">${a.action}</span>
+                                <span class="audit-time">${a.created_at}</span>
+                            </div>
+                            <div class="audit-actor">${a.actor_name} (${a.actor_role})</div>
+                            ${a.reason ? `<div class="audit-reason">${escapeHtml(a.reason)}</div>` : ''}
+                        </div>`;
+                    });
+                } else {
+                    auditHtml += '<p style="color:var(--zoho-text-muted);text-align:center;">No audit records found.</p>';
+                }
+                auditHtml += '</div>';
+                openSlidePanel('Audit Trail', auditHtml);
+            }
+        });
+}
+
+// Delete Leave
+function deleteLeave(leaveId) {
+    Swal.fire({
+        title: 'Delete Leave?',
+        text: 'This will mark the leave as cancelled.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        confirmButtonColor: '#ef4444',
+        customClass: { popup: 'zoho-swal' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoader();
+            fetch(`/adminpanel/attendance/leave/${leaveId}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoader();
+                if (data.success) {
+                    Swal.fire({ title: 'Deleted!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } }).then(() => location.reload());
+                } else {
+                    Swal.fire({ title: 'Error', text: data.error, icon: 'error', customClass: { popup: 'zoho-swal' } });
+                }
+            });
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

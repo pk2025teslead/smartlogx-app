@@ -1,0 +1,181 @@
+{% extends 'adminpanel/base_admin.html' %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">User Management</h1>
+        <p class="zoho-page-subtitle">Manage all system users and their roles</p>
+    </div>
+    <a href="{% url 'adminpanel:add_user' %}" class="zoho-btn zoho-btn-primary">
+        <i class="bi bi-plus-lg"></i>
+        Add User
+    </a>
+</div>
+
+<!-- Stats Cards -->
+<div class="zoho-stats-grid" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon blue">
+            <i class="bi bi-people-fill"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ total_users }}</div>
+            <div class="zoho-stat-label">Total Users</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon green">
+            <i class="bi bi-code-slash"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ role_counts.SOFTWARE_DEVELOPER|default:0 }}</div>
+            <div class="zoho-stat-label">Developers</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon yellow">
+            <i class="bi bi-bug-fill"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ role_counts.SOFTWARE_TESTER|default:0 }}</div>
+            <div class="zoho-stat-label">Testers</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon purple">
+            <i class="bi bi-palette-fill"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ role_counts.UI_UX_DESIGNER|default:0 }}</div>
+            <div class="zoho-stat-label">Designers</div>
+        </div>
+    </div>
+</div>
+
+<!-- User Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="200">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="zoho-search-input" placeholder="Search users...">
+        </div>
+        <div class="zoho-filter-group">
+            <select class="zoho-select zoho-role-filter">
+                <option value="">All Roles</option>
+                {% for role in roles %}
+                <option value="{{ role }}">{{ role }}</option>
+                {% endfor %}
+            </select>
+            <select class="zoho-select zoho-rows-select">
+                <option value="10">10 rows</option>
+                <option value="20">20 rows</option>
+                <option value="50">50 rows</option>
+            </select>
+        </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="zoho-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" class="zoho-checkbox zoho-select-all">
+                    </th>
+                    <th>EMP ID</th>
+                    <th>NAME</th>
+                    <th>EMAIL</th>
+                    <th>MOBILE</th>
+                    <th>ROLE</th>
+                    <th>CREATED</th>
+                    <th style="width: 120px;">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr data-aos="fade-up" data-aos-delay="{{ forloop.counter|add:2 }}0">
+                    <td>
+                        <input type="checkbox" class="zoho-checkbox zoho-row-checkbox" value="{{ user.ID }}">
+                    </td>
+                    <td>
+                        <span style="font-weight: 600; color: var(--zoho-accent);">{{ user.EMP_ID }}</span>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--zoho-accent) 0%, var(--zoho-neon-purple) 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white;">
+                                {{ user.EMP_NAME|slice:":2"|upper }}
+                            </div>
+                            <span>{{ user.EMP_NAME }}</span>
+                        </div>
+                    </td>
+                    <td>{{ user.EMAIL }}</td>
+                    <td>{{ user.MOBILE_NUMBER|default:"-" }}</td>
+                    <td data-role="{{ user.ROLE }}">
+                        <span class="zoho-badge {% if 'DEVELOPER' in user.ROLE %}developer{% elif 'TESTER' in user.ROLE %}tester{% elif 'DESIGNER' in user.ROLE %}designer{% else %}coordinator{% endif %}">
+                            {{ user.ROLE }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if user.CREATED_AT %}
+                            {{ user.CREATED_AT|date:"M d, Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="zoho-actions">
+                            <a href="{% url 'adminpanel:edit_user' user.ID %}" class="zoho-action-btn edit" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="zoho-action-btn reset" title="Reset Password" onclick="confirmResetPassword({{ user.ID }}, '{{ user.EMP_NAME }}')">
+                                <i class="bi bi-key"></i>
+                            </button>
+                            <button type="button" class="zoho-action-btn delete" title="Delete" onclick="confirmDelete({{ user.ID }}, '{{ user.EMP_NAME }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Hidden forms for delete and reset -->
+                        <form id="delete-form-{{ user.ID }}" action="{% url 'adminpanel:delete_user' user.ID %}" method="POST" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                        <form id="reset-form-{{ user.ID }}" action="{% url 'adminpanel:reset_password' user.ID %}" method="POST" style="display: none;">
+                            {% csrf_token %}
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="zoho-empty-state">
+                            <div class="zoho-empty-icon">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <h3 class="zoho-empty-title">No Users Found</h3>
+                            <p class="zoho-empty-text">Get started by adding your first user</p>
+                            <a href="{% url 'adminpanel:add_user' %}" class="zoho-btn zoho-btn-primary">
+                                <i class="bi bi-plus-lg"></i>
+                                Add User
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if users %}
+    <div class="zoho-pagination">
+        <div class="zoho-pagination-info">
+            Showing 1 to {{ users|length }} of {{ total_users }} entries
+        </div>
+        <div class="zoho-pagination-controls">
+            <!-- Pagination controls will be generated by JS -->
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

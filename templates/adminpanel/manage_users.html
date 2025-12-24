@@ -1,0 +1,118 @@
+{% extends 'adminpanel/base_admin.html' %}
+
+{% block title %}Manage Access{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Manage Access</h1>
+        <p class="zoho-page-subtitle">Activate or deactivate user accounts</p>
+    </div>
+    <a href="{% url 'adminpanel:user_list' %}" class="zoho-btn zoho-btn-secondary">
+        <i class="bi bi-arrow-left"></i>
+        Back to Users
+    </a>
+</div>
+
+<!-- Users Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="zoho-search-input" placeholder="Search users...">
+        </div>
+        <div class="zoho-filter-group">
+            <span style="font-size: 13px; color: var(--zoho-text-muted);">
+                {{ users|length }} user{% if users|length != 1 %}s{% endif %}
+            </span>
+        </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="zoho-table">
+            <thead>
+                <tr>
+                    <th>USER</th>
+                    <th>EMAIL</th>
+                    <th>JOINED</th>
+                    <th>STATUS</th>
+                    <th style="width: 150px;">ACTION</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--zoho-accent) 0%, var(--zoho-neon-purple) 100%); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: white;">
+                                {{ user.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">{{ user.username }}</div>
+                                <div style="font-size: 12px; color: var(--zoho-text-muted);">
+                                    {% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}No name{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% if user.date_joined %}
+                            {{ user.date_joined|date:"M d, Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_active and user.profile_active %}
+                            <span class="zoho-badge developer">
+                                <i class="bi bi-check-circle" style="margin-right: 4px;"></i>
+                                Active
+                            </span>
+                        {% else %}
+                            <span class="zoho-badge" style="background: rgba(239, 68, 68, 0.15); color: var(--zoho-neon-red);">
+                                <i class="bi bi-x-circle" style="margin-right: 4px;"></i>
+                                Inactive
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{% url 'adminpanel:toggle_user' user.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            {% if user.is_active and user.profile_active %}
+                                <input type="hidden" name="status" value="false">
+                                <button type="submit" class="zoho-btn zoho-btn-danger" style="padding: 8px 16px; font-size: 13px;" 
+                                        onclick="return confirm('Are you sure you want to deactivate this user?')">
+                                    <i class="bi bi-person-x"></i>
+                                    Deactivate
+                                </button>
+                            {% else %}
+                                <input type="hidden" name="status" value="true">
+                                <button type="submit" class="zoho-btn zoho-btn-success" style="padding: 8px 16px; font-size: 13px;"
+                                        onclick="return confirm('Are you sure you want to activate this user?')">
+                                    <i class="bi bi-person-check"></i>
+                                    Activate
+                                </button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="zoho-empty-state">
+                            <div class="zoho-empty-icon">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <h3 class="zoho-empty-title">No Users Found</h3>
+                            <p class="zoho-empty-text">There are no users to manage.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

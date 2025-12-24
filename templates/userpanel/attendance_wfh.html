@@ -1,0 +1,430 @@
+{% extends 'userpanel/base_user.html' %}
+{% load static %}
+
+{% block title %}Work From Home{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Work From Home Information</h1>
+        <p class="zoho-page-subtitle">Request and manage your WFH days</p>
+    </div>
+    <button class="zoho-btn zoho-btn-primary" onclick="openAddWfhForm()">
+        <i class="bi bi-plus-lg"></i>
+        Add WFH
+    </button>
+</div>
+
+<!-- Month Navigation & Stats -->
+<div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;" data-aos="fade-up" data-aos-delay="100">
+    <div class="month-nav">
+        <button class="month-nav-btn" onclick="navigateMonth({{ year }}, {{ month }}, -1)">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <div class="month-nav-current">{{ month_name }} {{ year }}</div>
+        <button class="month-nav-btn" onclick="navigateMonth({{ year }}, {{ month }}, 1)" {% if is_current_month %}disabled{% endif %}>
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+    
+    <div style="display: flex; gap: 12px;">
+        <div class="zoho-stat-card" style="padding: 10px 16px;">
+            <div class="zoho-stat-icon purple" style="width: 32px; height: 32px; font-size: 14px;">
+                <i class="bi bi-house"></i>
+            </div>
+            <div>
+                <div class="zoho-stat-value" style="font-size: 18px;">{{ stats.total }}</div>
+                <div class="zoho-stat-label" style="font-size: 10px;">Total</div>
+            </div>
+        </div>
+        <div class="zoho-stat-card" style="padding: 10px 16px;">
+            <div class="zoho-stat-icon green" style="width: 32px; height: 32px; font-size: 14px;">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <div class="zoho-stat-value" style="font-size: 18px;">{{ stats.approved }}</div>
+                <div class="zoho-stat-label" style="font-size: 10px;">Approved</div>
+            </div>
+        </div>
+        <div class="zoho-stat-card" style="padding: 10px 16px;">
+            <div class="zoho-stat-icon yellow" style="width: 32px; height: 32px; font-size: 14px;">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div>
+                <div class="zoho-stat-value" style="font-size: 18px;">{{ stats.pending }}</div>
+                <div class="zoho-stat-label" style="font-size: 10px;">Pending</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- WFH Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="200">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="zoho-search-input" placeholder="Search..." onkeyup="searchTable(this.value)">
+        </div>
+        <div class="zoho-filter-group">
+            <button class="zoho-btn zoho-btn-secondary" style="padding: 8px 12px;" onclick="resetColumnOrder()" title="Reset Column Order">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="zoho-table" id="wfhTable">
+            <thead>
+                <tr>
+                    <th data-column="sno" data-draggable="false" style="width: 60px;">S.No</th>
+                    <th data-column="date">Date</th>
+                    <th data-column="reason">Work From Reason</th>
+                    <th data-column="notes">Notes</th>
+                    <th data-column="status">Status</th>
+                    <th data-column="action" data-draggable="false" style="width: 150px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for wfh in wfh_records %}
+                <tr data-id="{{ wfh.ID }}">
+                    <td data-column="sno">{{ forloop.counter }}</td>
+                    <td data-column="date">
+                        <span style="font-weight: 500;">{{ wfh.WFH_DATE|date:"d M, Y" }}</span>
+                        <span style="font-size: 11px; color: var(--zoho-text-muted); display: block;">{{ wfh.WFH_DATE|date:"l" }}</span>
+                    </td>
+                    <td data-column="reason">{{ wfh.REASON|truncatechars:50 }}</td>
+                    <td data-column="notes">{{ wfh.NOTES|default:"-"|truncatechars:30 }}</td>
+                    <td data-column="status">
+                        {% if wfh.IS_APPROVED == 1 %}
+                        <span class="status-badge approved"><i class="bi bi-check-circle"></i> Approved</span>
+                        {% elif wfh.IS_APPROVED == 0 %}
+                        <span class="status-badge rejected"><i class="bi bi-x-circle"></i> Rejected</span>
+                        {% else %}
+                        <span class="status-badge pending"><i class="bi bi-hourglass-split"></i> Pending</span>
+                        {% endif %}
+                    </td>
+                    <td data-column="action">
+                        <div class="action-buttons">
+                            <button class="zoho-action-btn edit" onclick="viewWfh({{ wfh.ID }})" title="View">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            {% if wfh.IS_APPROVED is None %}
+                            <button class="zoho-action-btn edit" onclick="editWfh({{ wfh.ID }})" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="zoho-action-btn delete" onclick="confirmDeleteWfh({{ wfh.ID }})" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="zoho-empty-state">
+                            <div class="zoho-empty-icon">
+                                <i class="bi bi-house"></i>
+                            </div>
+                            <h3 class="zoho-empty-title">No WFH Records</h3>
+                            <p class="zoho-empty-text">You haven't submitted any WFH requests for {{ month_name }}.</p>
+                            <button class="zoho-btn zoho-btn-primary" onclick="openAddWfhForm()">
+                                <i class="bi bi-plus-lg"></i>
+                                Add WFH Request
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.status-badge.approved { background: rgba(16, 185, 129, 0.15); color: var(--zoho-neon-green); }
+.status-badge.rejected { background: rgba(239, 68, 68, 0.15); color: var(--zoho-neon-red); }
+.status-badge.pending { background: rgba(245, 158, 11, 0.15); color: var(--zoho-neon-yellow); }
+.action-buttons { display: flex; gap: 6px; }
+
+.form-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--zoho-text-muted);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/draggable-table.js' %}"></script>
+<script>
+let wfhTable;
+document.addEventListener('DOMContentLoaded', function() {
+    wfhTable = initDraggableTable('wfhTable', 'wfh');
+});
+
+function resetColumnOrder() {
+    if (wfhTable) wfhTable.resetOrder();
+}
+
+function openAddWfhForm() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const formHtml = `
+        <form id="wfhForm" class="zoho-form">
+            <input type="hidden" name="id" value="">
+            
+            <div class="zoho-form-group">
+                <label class="zoho-form-label required">WFH Date</label>
+                <input type="date" name="wfh_date" class="zoho-form-input" required value="${today}" min="${today}">
+                <small class="form-hint"><i class="bi bi-info-circle"></i> Select the date you want to work from home</small>
+            </div>
+            
+            <div class="zoho-form-group">
+                <label class="zoho-form-label required">Reason for WFH</label>
+                <input type="text" name="reason" class="zoho-form-input" placeholder="Why do you need to work from home?" required>
+            </div>
+            
+            <div class="zoho-form-group">
+                <label class="zoho-form-label">Notes</label>
+                <textarea name="notes" class="zoho-form-input" rows="3" placeholder="Additional notes (optional)"></textarea>
+            </div>
+            
+            <div class="zoho-btn-group" style="margin-top: 24px;">
+                <button type="submit" class="zoho-btn zoho-btn-primary">
+                    <i class="bi bi-send"></i>
+                    Send Info
+                </button>
+                <button type="button" class="zoho-btn zoho-btn-secondary" onclick="closeSlidePanel()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    `;
+    
+    openSlidePanel('Add WFH Request', formHtml);
+    
+    setTimeout(() => {
+        document.getElementById('wfhForm').addEventListener('submit', handleWfhSubmit);
+    }, 100);
+}
+
+function editWfh(wfhId) {
+    showLoader();
+    const today = new Date().toISOString().split('T')[0];
+    
+    fetch(`/user/attendance/wfh/${wfhId}/`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoader();
+            if (data.success) {
+                const wfh = data.wfh;
+                const formHtml = `
+                    <form id="wfhForm" class="zoho-form">
+                        <input type="hidden" name="id" value="${wfh.id}">
+                        
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label required">WFH Date</label>
+                            <input type="date" name="wfh_date" class="zoho-form-input" required value="${wfh.wfh_date}" min="${today}">
+                            <small class="form-hint"><i class="bi bi-info-circle"></i> Select the date you want to work from home</small>
+                        </div>
+                        
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label required">Reason for WFH</label>
+                            <input type="text" name="reason" class="zoho-form-input" required value="${escapeHtml(wfh.reason)}">
+                        </div>
+                        
+                        <div class="zoho-form-group">
+                            <label class="zoho-form-label">Notes</label>
+                            <textarea name="notes" class="zoho-form-input" rows="3">${escapeHtml(wfh.notes)}</textarea>
+                        </div>
+                        
+                        <div class="zoho-btn-group" style="margin-top: 24px;">
+                            <button type="submit" class="zoho-btn zoho-btn-primary">
+                                <i class="bi bi-check-lg"></i>
+                                Update
+                            </button>
+                            <button type="button" class="zoho-btn zoho-btn-secondary" onclick="closeSlidePanel()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                `;
+                
+                openSlidePanel('Edit WFH Request', formHtml);
+                setTimeout(() => {
+                    document.getElementById('wfhForm').addEventListener('submit', handleWfhSubmit);
+                }, 100);
+            }
+        });
+}
+
+function viewWfh(wfhId) {
+    showLoader();
+    
+    fetch(`/user/attendance/wfh/${wfhId}/`)
+        .then(response => response.json())
+        .then(data => {
+            hideLoader();
+            if (data.success) {
+                const wfh = data.wfh;
+                const statusClass = wfh.is_approved === 1 ? 'approved' : (wfh.is_approved === 0 ? 'rejected' : 'pending');
+                
+                const viewHtml = `
+                    <div class="log-view-header">
+                        <div class="log-view-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);">
+                            <i class="bi bi-house"></i>
+                        </div>
+                        <div class="log-view-title">
+                            <h4>Work From Home</h4>
+                            <p>${wfh.wfh_date_display}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="log-view-meta">
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Status</div>
+                            <div class="log-view-meta-value">
+                                <span class="status-badge ${statusClass}">${wfh.status}</span>
+                            </div>
+                        </div>
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Requested</div>
+                            <div class="log-view-meta-value">${wfh.requested_at}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-view-content">
+                        <div class="log-view-content-label">Reason</div>
+                        <div class="log-view-content-text">${escapeHtml(wfh.reason)}</div>
+                    </div>
+                    
+                    ${wfh.notes ? `
+                    <div class="log-view-content" style="margin-top: 16px;">
+                        <div class="log-view-content-label">Notes</div>
+                        <div class="log-view-content-text">${escapeHtml(wfh.notes)}</div>
+                    </div>
+                    ` : ''}
+                `;
+                
+                openSlidePanel('WFH Details', viewHtml);
+            }
+        });
+}
+
+function handleWfhSubmit(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    const data = {
+        id: formData.get('id') || null,
+        wfh_date: formData.get('wfh_date'),
+        reason: formData.get('reason'),
+        notes: formData.get('notes')
+    };
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+    
+    fetch('/user/attendance/wfh/save/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeSlidePanel();
+            Swal.fire({
+                title: 'Success!',
+                text: data.message,
+                icon: 'success',
+                customClass: { popup: 'zoho-swal' }
+            }).then(() => location.reload());
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-send"></i> Send Info';
+            Swal.fire({
+                title: 'Error',
+                html: data.errors ? data.errors.join('<br>') : data.error,
+                icon: 'error',
+                customClass: { popup: 'zoho-swal' }
+            });
+        }
+    });
+}
+
+function confirmDeleteWfh(wfhId) {
+    Swal.fire({
+        title: 'Delete WFH Request?',
+        text: 'This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        customClass: { popup: 'zoho-swal' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoader();
+            fetch(`/user/attendance/wfh/${wfhId}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoader();
+                if (data.success) {
+                    Swal.fire({ title: 'Deleted!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire({ title: 'Error', text: data.error, icon: 'error', customClass: { popup: 'zoho-swal' } });
+                }
+            });
+        }
+    });
+}
+
+function searchTable(query) {
+    const rows = document.querySelectorAll('#wfhTable tbody tr');
+    query = query.toLowerCase();
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+
+function navigateMonth(year, month, direction) {
+    let newMonth = month + direction;
+    let newYear = year;
+    if (newMonth > 12) { newMonth = 1; newYear++; }
+    else if (newMonth < 1) { newMonth = 12; newYear--; }
+    window.location.href = `?year=${newYear}&month=${newMonth}`;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

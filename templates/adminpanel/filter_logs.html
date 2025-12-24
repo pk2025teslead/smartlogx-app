@@ -1,0 +1,195 @@
+{% extends 'adminpanel/base_admin.html' %}
+
+{% block title %}View Logs{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">View Logs</h1>
+        <p class="zoho-page-subtitle">Filter and search through all system logs</p>
+    </div>
+    <div class="zoho-btn-group">
+        <a href="{% url 'adminpanel:export_csv' %}?{{ request.GET.urlencode }}" class="zoho-btn zoho-btn-secondary">
+            <i class="bi bi-file-earmark-csv"></i>
+            Export CSV
+        </a>
+        <a href="{% url 'adminpanel:export_excel' %}?{{ request.GET.urlencode }}" class="zoho-btn zoho-btn-primary">
+            <i class="bi bi-file-earmark-excel"></i>
+            Export Excel
+        </a>
+    </div>
+</div>
+
+<!-- Filter Card -->
+<div class="zoho-card" style="margin-bottom: 24px;" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-card-header">
+        <h3 class="zoho-card-title">
+            <i class="bi bi-funnel" style="margin-right: 8px; color: var(--zoho-accent);"></i>
+            Filter Options
+        </h3>
+    </div>
+    <div class="zoho-card-body">
+        <form method="GET" class="zoho-form">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div class="zoho-form-group" style="margin-bottom: 0;">
+                    <label class="zoho-form-label">User</label>
+                    <select name="user_id" class="zoho-form-input">
+                        <option value="">All Users</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if filters.user_id == user.id|stringformat:"s" %}selected{% endif %}>
+                            {{ user.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="zoho-form-group" style="margin-bottom: 0;">
+                    <label class="zoho-form-label">Priority</label>
+                    <select name="priority" class="zoho-form-input">
+                        <option value="">All Priorities</option>
+                        <option value="Low" {% if filters.priority == 'Low' %}selected{% endif %}>Low</option>
+                        <option value="Medium" {% if filters.priority == 'Medium' %}selected{% endif %}>Medium</option>
+                        <option value="High" {% if filters.priority == 'High' %}selected{% endif %}>High</option>
+                    </select>
+                </div>
+                
+                <div class="zoho-form-group" style="margin-bottom: 0;">
+                    <label class="zoho-form-label">Start Date</label>
+                    <input type="date" name="start_date" class="zoho-form-input" value="{{ filters.start_date|default:'' }}">
+                </div>
+                
+                <div class="zoho-form-group" style="margin-bottom: 0;">
+                    <label class="zoho-form-label">End Date</label>
+                    <input type="date" name="end_date" class="zoho-form-input" value="{{ filters.end_date|default:'' }}">
+                </div>
+            </div>
+            
+            <div class="zoho-btn-group" style="margin-top: 20px;">
+                <button type="submit" class="zoho-btn zoho-btn-primary">
+                    <i class="bi bi-search"></i>
+                    Apply Filters
+                </button>
+                <a href="{% url 'adminpanel:filter_logs' %}" class="zoho-btn zoho-btn-secondary">
+                    <i class="bi bi-x-lg"></i>
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="200">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="zoho-search-input" placeholder="Search logs...">
+        </div>
+        <div class="zoho-filter-group">
+            <span style="font-size: 13px; color: var(--zoho-text-muted);">
+                {{ logs|length }} log{% if logs|length != 1 %}s{% endif %} found
+            </span>
+            <select class="zoho-select zoho-rows-select">
+                <option value="10">10 rows</option>
+                <option value="20">20 rows</option>
+                <option value="50">50 rows</option>
+            </select>
+        </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="zoho-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" class="zoho-checkbox zoho-select-all">
+                    </th>
+                    <th>ID</th>
+                    <th>USER</th>
+                    <th>TITLE</th>
+                    <th>DESCRIPTION</th>
+                    <th>PRIORITY</th>
+                    <th>LOG DATE</th>
+                    <th>CREATED</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        <input type="checkbox" class="zoho-checkbox zoho-row-checkbox" value="{{ log.id }}">
+                    </td>
+                    <td>
+                        <span style="font-weight: 600; color: var(--zoho-accent);">#{{ log.id }}</span>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--zoho-accent) 0%, var(--zoho-neon-purple) 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white;">
+                                {{ log.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div style="font-weight: 500;">{{ log.username }}</div>
+                                <div style="font-size: 12px; color: var(--zoho-text-muted);">{{ log.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight: 500;">{{ log.title|truncatechars:30 }}</span>
+                    </td>
+                    <td>
+                        <span style="color: var(--zoho-text-secondary);">{{ log.description|truncatechars:40 }}</span>
+                    </td>
+                    <td>
+                        <span class="zoho-badge {% if log.priority == 'High' %}coordinator{% elif log.priority == 'Medium' %}designer{% else %}developer{% endif %}">
+                            {{ log.priority }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if log.log_date %}
+                            {{ log.log_date|date:"M d, Y" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.created_at %}
+                            {{ log.created_at|date:"M d, Y H:i" }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="zoho-empty-state">
+                            <div class="zoho-empty-icon">
+                                <i class="bi bi-journal-x"></i>
+                            </div>
+                            <h3 class="zoho-empty-title">No Logs Found</h3>
+                            <p class="zoho-empty-text">Try adjusting your filters or check back later.</p>
+                            <a href="{% url 'adminpanel:filter_logs' %}" class="zoho-btn zoho-btn-secondary">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Clear Filters
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if logs %}
+    <div class="zoho-pagination">
+        <div class="zoho-pagination-info">
+            Showing 1 to {{ logs|length }} of {{ logs|length }} entries
+        </div>
+        <div class="zoho-pagination-controls">
+            <!-- Pagination controls will be generated by JS -->
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,775 @@
+{% extends 'userpanel/base_user.html' %}
+{% load static %}
+
+{% block title %}Leave Management{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Leave Management</h1>
+        <p class="zoho-page-subtitle">Submit and manage your leave requests</p>
+    </div>
+    <button class="zoho-btn zoho-btn-primary" onclick="openAddLeaveForm()">
+        <i class="bi bi-plus-lg"></i>
+        New Leave Request
+    </button>
+</div>
+
+<!-- Month Navigation & Stats -->
+<div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;" data-aos="fade-up" data-aos-delay="100">
+    <div class="month-nav">
+        <button class="month-nav-btn" onclick="navigateMonth({{ year }}, {{ month }}, -1)">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <div class="month-nav-current">{{ month_name }} {{ year }}</div>
+        <button class="month-nav-btn" onclick="navigateMonth({{ year }}, {{ month }}, 1)" {% if is_current_month %}disabled{% endif %}>
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+    
+    <div style="display: flex; gap: 12px;">
+        <div class="zoho-stat-card" style="padding: 10px 16px;">
+            <div class="zoho-stat-icon green" style="width: 32px; height: 32px; font-size: 14px;">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <div class="zoho-stat-value" style="font-size: 18px;">{{ stats.approved }}</div>
+                <div class="zoho-stat-label" style="font-size: 10px;">Approved</div>
+            </div>
+        </div>
+        <div class="zoho-stat-card" style="padding: 10px 16px;">
+            <div class="zoho-stat-icon yellow" style="width: 32px; height: 32px; font-size: 14px;">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div>
+                <div class="zoho-stat-value" style="font-size: 18px;">{{ stats.pending }}</div>
+                <div class="zoho-stat-label" style="font-size: 10px;">Pending</div>
+            </div>
+        </div>
+        <div class="zoho-stat-card" style="padding: 10px 16px;">
+            <div class="zoho-stat-icon" style="width: 32px; height: 32px; font-size: 14px; background: rgba(239, 68, 68, 0.15); color: var(--zoho-neon-red);">
+                <i class="bi bi-x-circle"></i>
+            </div>
+            <div>
+                <div class="zoho-stat-value" style="font-size: 18px;">{{ stats.rejected }}</div>
+                <div class="zoho-stat-label" style="font-size: 10px;">Rejected</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Table -->
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="200">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="zoho-search-input" placeholder="Search leaves..." onkeyup="searchTable(this.value)">
+        </div>
+        <div class="zoho-filter-group">
+            <select class="zoho-select" onchange="filterByStatus(this.value)">
+                <option value="">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="CANCELLED">Cancelled</option>
+            </select>
+        </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="zoho-table" id="leaveTable">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">S.No</th>
+                    <th>Date Range</th>
+                    <th>Days</th>
+                    <th>Leave Type</th>
+                    <th>Notes</th>
+                    <th>Status</th>
+                    <th>Edit Window</th>
+                    <th style="width: 150px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for leave in leaves %}
+                <tr data-id="{{ leave.id }}" data-status="{{ leave.status }}" data-seconds="{{ leave.seconds_remaining }}">
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ leave.leave_date_display }}</td>
+                    <td><span class="days-badge">{{ leave.days_badge }}</span></td>
+                    <td>
+                        <span class="zoho-badge {% if leave.leave_type == 'PLANNED' %}developer{% elif leave.leave_type == 'CASUAL' %}tester{% elif leave.leave_type == 'EMERGENCY' %}coordinator{% else %}designer{% endif %}">
+                            {{ leave.leave_type }}
+                        </span>
+                    </td>
+                    <td>{{ leave.notes|default:"-"|truncatechars:30 }}</td>
+                    <td>
+                        <span class="status-badge {{ leave.status|lower }}">
+                            {% if leave.status == 'APPROVED' %}<i class="bi bi-check-circle"></i>
+                            {% elif leave.status == 'REJECTED' %}<i class="bi bi-x-circle"></i>
+                            {% elif leave.status == 'CANCELLED' %}<i class="bi bi-slash-circle"></i>
+                            {% else %}<i class="bi bi-hourglass-split"></i>{% endif %}
+                            {{ leave.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if leave.status == 'PENDING' and leave.can_edit %}
+                        <div class="edit-timer" data-leave-id="{{ leave.id }}" data-seconds="{{ leave.seconds_remaining }}">
+                            <i class="bi bi-clock"></i>
+                            <span class="timer-display">--:--</span>
+                        </div>
+                        {% elif leave.status == 'PENDING' %}
+                        <span class="edit-expired"><i class="bi bi-lock"></i> Expired</span>
+                        {% else %}
+                        <span class="edit-na">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="zoho-action-btn view" onclick="viewLeave({{ leave.id }})" title="View">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            {% if leave.status == 'PENDING' %}
+                            <button class="zoho-action-btn edit edit-btn-{{ leave.id }}" onclick="editLeave({{ leave.id }})" title="Edit" {% if not leave.can_edit %}disabled{% endif %}>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="zoho-action-btn delete" onclick="confirmCancelLeave({{ leave.id }})" title="Cancel">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="zoho-empty-state">
+                            <div class="zoho-empty-icon"><i class="bi bi-calendar-x"></i></div>
+                            <h3 class="zoho-empty-title">No Leave Records</h3>
+                            <p class="zoho-empty-text">You haven't submitted any leave requests for {{ month_name }}.</p>
+                            <button class="zoho-btn zoho-btn-primary" onclick="openAddLeaveForm()">
+                                <i class="bi bi-plus-lg"></i> New Leave Request
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Info Alert -->
+<div class="zoho-alert info" style="margin-top: 24px;" data-aos="fade-up" data-aos-delay="300">
+    <i class="bi bi-info-circle zoho-alert-icon"></i>
+    <div class="zoho-alert-content">
+        <div class="zoho-alert-text">
+            <strong>Edit Window:</strong> You can edit your leave request within <strong>{{ edit_window_minutes }} minutes</strong> after submission. 
+            After that, contact admin for modifications.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.status-badge.approved { background: rgba(16, 185, 129, 0.15); color: var(--zoho-neon-green); }
+.status-badge.rejected { background: rgba(239, 68, 68, 0.15); color: var(--zoho-neon-red); }
+.status-badge.pending { background: rgba(245, 158, 11, 0.15); color: var(--zoho-neon-yellow); }
+.status-badge.cancelled { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+
+.action-buttons { display: flex; gap: 6px; }
+
+.edit-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+.edit-timer.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.edit-timer.critical { background: rgba(239, 68, 68, 0.15); color: #ef4444; animation: pulse 1s infinite; }
+
+.edit-expired {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #6b7280;
+    font-size: 12px;
+}
+.edit-na { color: #6b7280; }
+
+.days-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--zoho-neon-purple);
+}
+
+.date-range-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.days-calculator {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--zoho-bg-secondary);
+    border-radius: var(--zoho-radius-sm);
+    border: 1px solid var(--zoho-border);
+    text-align: center;
+}
+
+.days-calculator .days-count {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--zoho-neon-purple);
+}
+
+.days-calculator .days-label {
+    font-size: 12px;
+    color: var(--zoho-text-muted);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.zoho-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.month-nav { display: flex; align-items: center; gap: 16px; }
+.month-nav-btn {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    border: 1px solid var(--zoho-border);
+    background: var(--zoho-bg-secondary);
+    color: var(--zoho-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.month-nav-btn:hover:not(:disabled) { background: var(--zoho-bg-hover); color: var(--zoho-text-primary); }
+.month-nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.month-nav-current { font-size: 16px; font-weight: 600; min-width: 150px; text-align: center; }
+</style>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// Page-specific constants (csrfToken is defined in base template)
+const EDIT_WINDOW_MINUTES = {{ edit_window_minutes }};
+const CURRENT_DATE = '{{ current_date }}';
+const LEAVE_TYPES = [{% for type in leave_types %}'{{ type }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+// Timer management
+const timers = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTimers();
+});
+
+function initializeTimers() {
+    document.querySelectorAll('.edit-timer').forEach(el => {
+        const leaveId = el.dataset.leaveId;
+        let seconds = parseInt(el.dataset.seconds) || 0;
+        
+        if (seconds > 0) {
+            updateTimerDisplay(el, seconds);
+            timers[leaveId] = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(timers[leaveId]);
+                    handleTimerExpired(leaveId, el);
+                } else {
+                    updateTimerDisplay(el, seconds);
+                }
+            }, 1000);
+        } else {
+            handleTimerExpired(leaveId, el);
+        }
+    });
+}
+
+function updateTimerDisplay(el, seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const display = el.querySelector('.timer-display');
+    display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    
+    // Update styling based on time remaining
+    el.classList.remove('warning', 'critical');
+    if (seconds <= 60) {
+        el.classList.add('critical');
+    } else if (seconds <= 180) {
+        el.classList.add('warning');
+    }
+}
+
+function handleTimerExpired(leaveId, el) {
+    el.innerHTML = '<i class="bi bi-lock"></i> Expired';
+    el.className = 'edit-expired';
+    
+    // Disable edit button
+    const editBtn = document.querySelector(`.edit-btn-${leaveId}`);
+    if (editBtn) {
+        editBtn.disabled = true;
+        editBtn.title = 'Edit window expired';
+    }
+}
+
+// Navigation
+function navigateMonth(year, month, direction) {
+    let newMonth = month + direction;
+    let newYear = year;
+    if (newMonth > 12) { newMonth = 1; newYear++; }
+    else if (newMonth < 1) { newMonth = 12; newYear--; }
+    window.location.href = `?year=${newYear}&month=${newMonth}`;
+}
+
+// Search & Filter
+function searchTable(query) {
+    const rows = document.querySelectorAll('#leaveTable tbody tr');
+    query = query.toLowerCase();
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+
+function filterByStatus(status) {
+    const rows = document.querySelectorAll('#leaveTable tbody tr');
+    rows.forEach(row => {
+        if (!status || row.dataset.status === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Add Leave Form with Date Range
+function openAddLeaveForm() {
+    let typeOptions = '<option value="">Select Type</option>';
+    LEAVE_TYPES.forEach(type => {
+        typeOptions += `<option value="${type}">${type}</option>`;
+    });
+    
+    const formHtml = `
+        <form id="leaveForm" class="zoho-form">
+            <div class="zoho-form-group">
+                <label class="zoho-form-label required">Leave Duration</label>
+                <div class="date-range-row">
+                    <div>
+                        <label style="font-size: 11px; color: var(--zoho-text-muted); margin-bottom: 4px; display: block;">From Date</label>
+                        <input type="date" name="from_date" id="fromDate" class="zoho-form-input" required value="${CURRENT_DATE}" min="${CURRENT_DATE}" onchange="calculateDays()">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--zoho-text-muted); margin-bottom: 4px; display: block;">To Date</label>
+                        <input type="date" name="to_date" id="toDate" class="zoho-form-input" required value="${CURRENT_DATE}" min="${CURRENT_DATE}" onchange="calculateDays()">
+                    </div>
+                </div>
+                <div class="days-calculator" id="daysCalculator">
+                    <div class="days-count" id="daysCount">1</div>
+                    <div class="days-label">Day(s) Leave</div>
+                </div>
+            </div>
+            <div class="zoho-form-group">
+                <label class="zoho-form-label required">Leave Type</label>
+                <select name="leave_type" class="zoho-form-input" required>
+                    ${typeOptions}
+                </select>
+            </div>
+            <div class="zoho-form-group">
+                <label class="zoho-form-label">Notes</label>
+                <textarea name="notes" class="zoho-form-input" rows="3" placeholder="Reason for leave (optional)"></textarea>
+            </div>
+            <div class="zoho-alert info" style="margin-top: 16px;">
+                <i class="bi bi-clock zoho-alert-icon"></i>
+                <div class="zoho-alert-text" style="font-size: 12px;">
+                    You can edit this request within <strong>${EDIT_WINDOW_MINUTES} minutes</strong> after submission.
+                </div>
+            </div>
+            <div class="zoho-btn-group" style="margin-top: 24px;">
+                <button type="submit" class="zoho-btn zoho-btn-primary">
+                    <i class="bi bi-send"></i> Submit Request
+                </button>
+                <button type="button" class="zoho-btn zoho-btn-secondary" onclick="closeSlidePanel()">Cancel</button>
+            </div>
+        </form>
+    `;
+    openSlidePanel('New Leave Request', formHtml);
+    setTimeout(() => {
+        document.getElementById('leaveForm').addEventListener('submit', handleLeaveCreate);
+        // Set min date for to_date based on from_date
+        document.getElementById('fromDate').addEventListener('change', function() {
+            document.getElementById('toDate').min = this.value;
+            if (document.getElementById('toDate').value < this.value) {
+                document.getElementById('toDate').value = this.value;
+            }
+            calculateDays();
+        });
+    }, 100);
+}
+
+// Calculate days between dates
+function calculateDays() {
+    const fromDate = document.getElementById('fromDate')?.value;
+    const toDate = document.getElementById('toDate')?.value;
+    const daysCount = document.getElementById('daysCount');
+    
+    if (fromDate && toDate && daysCount) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        const diffTime = to - from;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        if (diffDays > 0 && diffDays <= 30) {
+            daysCount.textContent = diffDays;
+            daysCount.style.color = 'var(--zoho-neon-purple)';
+        } else if (diffDays > 30) {
+            daysCount.textContent = diffDays + ' (Max 30)';
+            daysCount.style.color = 'var(--zoho-neon-red)';
+        } else {
+            daysCount.textContent = 'Invalid';
+            daysCount.style.color = 'var(--zoho-neon-red)';
+        }
+    }
+}
+
+function handleLeaveCreate(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    const data = {
+        from_date: form.from_date.value,
+        to_date: form.to_date.value,
+        leave_type: form.leave_type.value,
+        notes: form.notes.value
+    };
+    
+    // Client-side validation
+    if (new Date(data.to_date) < new Date(data.from_date)) {
+        Swal.fire({ title: 'Invalid Dates', text: 'To date must be after From date', icon: 'error', customClass: { popup: 'zoho-swal' } });
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting...';
+    
+    fetch('/user/attendance/leave/create/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeSlidePanel();
+            Swal.fire({
+                title: 'Success!',
+                html: `${data.message}<br><br><small>Edit window: <strong>${EDIT_WINDOW_MINUTES} minutes</strong></small>`,
+                icon: 'success',
+                customClass: { popup: 'zoho-swal' }
+            }).then(() => location.reload());
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-send"></i> Submit Request';
+            Swal.fire({
+                title: 'Error',
+                html: data.errors ? data.errors.join('<br>') : data.error,
+                icon: 'error',
+                customClass: { popup: 'zoho-swal' }
+            });
+        }
+    });
+}
+
+// View Leave
+function viewLeave(leaveId) {
+    showLoader();
+    fetch(`/user/attendance/leave/${leaveId}/`)
+        .then(r => r.json())
+        .then(data => {
+            hideLoader();
+            if (data.success) {
+                const leave = data.leave;
+                const statusClass = leave.status.toLowerCase();
+                const viewHtml = `
+                    <div class="log-view-header">
+                        <div class="log-view-icon" style="background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);">
+                            <i class="bi bi-calendar-x"></i>
+                        </div>
+                        <div class="log-view-title">
+                            <h4>${leave.leave_type} Leave</h4>
+                            <p>${leave.leave_date_display}</p>
+                        </div>
+                    </div>
+                    <div class="log-view-meta">
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Duration</div>
+                            <div class="log-view-meta-value"><span class="days-badge">${leave.total_days} day${leave.total_days > 1 ? 's' : ''}</span></div>
+                        </div>
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Status</div>
+                            <div class="log-view-meta-value"><span class="status-badge ${statusClass}">${leave.status}</span></div>
+                        </div>
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Submitted</div>
+                            <div class="log-view-meta-value">${leave.created_at || '-'}</div>
+                        </div>
+                        ${leave.status === 'PENDING' ? `
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Edit Window</div>
+                            <div class="log-view-meta-value">${leave.is_editable ? `<span class="edit-timer"><i class="bi bi-clock"></i> ${Math.floor(leave.seconds_remaining/60)}:${(leave.seconds_remaining%60).toString().padStart(2,'0')}</span>` : '<span class="edit-expired"><i class="bi bi-lock"></i> Expired</span>'}</div>
+                        </div>
+                        ` : ''}
+                        ${leave.approved_at ? `
+                        <div class="log-view-meta-item">
+                            <div class="log-view-meta-label">Processed</div>
+                            <div class="log-view-meta-value">${leave.approved_at}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ${leave.notes ? `<div class="log-view-content"><div class="log-view-content-label">Notes</div><div class="log-view-content-text">${escapeHtml(leave.notes)}</div></div>` : ''}
+                    ${leave.approval_notes ? `<div class="log-view-content" style="margin-top: 16px; border-left-color: ${leave.status === 'APPROVED' ? 'var(--zoho-neon-green)' : 'var(--zoho-neon-red)'};"><div class="log-view-content-label">Admin Notes</div><div class="log-view-content-text">${escapeHtml(leave.approval_notes)}</div></div>` : ''}
+                `;
+                openSlidePanel('Leave Details', viewHtml);
+            }
+        });
+}
+
+// Edit Leave with Date Range
+function editLeave(leaveId) {
+    // First check if still editable
+    fetch(`/user/attendance/leave/${leaveId}/check-edit/`)
+        .then(r => r.json())
+        .then(checkData => {
+            if (!checkData.is_editable) {
+                Swal.fire({
+                    title: 'Edit Window Expired',
+                    text: checkData.message,
+                    icon: 'warning',
+                    customClass: { popup: 'zoho-swal' }
+                });
+                return;
+            }
+            
+            // Fetch leave details
+            showLoader();
+            fetch(`/user/attendance/leave/${leaveId}/`)
+                .then(r => r.json())
+                .then(data => {
+                    hideLoader();
+                    if (data.success) {
+                        const leave = data.leave;
+                        
+                        // Build type options with selection
+                        let typeOptions = '';
+                        LEAVE_TYPES.forEach(type => {
+                            const selected = leave.leave_type === type ? 'selected' : '';
+                            typeOptions += `<option value="${type}" ${selected}>${type}</option>`;
+                        });
+                        
+                        const formHtml = `
+                            <form id="leaveEditForm" class="zoho-form">
+                                <div class="zoho-alert warning" style="margin-bottom: 16px;">
+                                    <i class="bi bi-clock zoho-alert-icon"></i>
+                                    <div class="zoho-alert-text">
+                                        Time remaining: <strong class="edit-countdown">${Math.floor(leave.seconds_remaining/60)}:${(leave.seconds_remaining%60).toString().padStart(2,'0')}</strong>
+                                    </div>
+                                </div>
+                                <div class="zoho-form-group">
+                                    <label class="zoho-form-label required">Leave Duration</label>
+                                    <div class="date-range-row">
+                                        <div>
+                                            <label style="font-size: 11px; color: var(--zoho-text-muted); margin-bottom: 4px; display: block;">From Date</label>
+                                            <input type="date" name="from_date" id="editFromDate" class="zoho-form-input" required value="${leave.from_date}" min="${CURRENT_DATE}" onchange="calculateEditDays()">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; color: var(--zoho-text-muted); margin-bottom: 4px; display: block;">To Date</label>
+                                            <input type="date" name="to_date" id="editToDate" class="zoho-form-input" required value="${leave.to_date}" min="${leave.from_date}" onchange="calculateEditDays()">
+                                        </div>
+                                    </div>
+                                    <div class="days-calculator" id="editDaysCalculator">
+                                        <div class="days-count" id="editDaysCount">${leave.total_days}</div>
+                                        <div class="days-label">Day(s) Leave</div>
+                                    </div>
+                                </div>
+                                <div class="zoho-form-group">
+                                    <label class="zoho-form-label required">Leave Type</label>
+                                    <select name="leave_type" class="zoho-form-input" required>
+                                        ${typeOptions}
+                                    </select>
+                                </div>
+                                <div class="zoho-form-group">
+                                    <label class="zoho-form-label">Notes</label>
+                                    <textarea name="notes" class="zoho-form-input" rows="3">${leave.notes || ''}</textarea>
+                                </div>
+                                <div class="zoho-btn-group" style="margin-top: 24px;">
+                                    <button type="submit" class="zoho-btn zoho-btn-primary"><i class="bi bi-check-lg"></i> Update</button>
+                                    <button type="button" class="zoho-btn zoho-btn-secondary" onclick="closeSlidePanel()">Cancel</button>
+                                </div>
+                            </form>
+                        `;
+                        openSlidePanel('Edit Leave Request', formHtml);
+                        
+                        // Start countdown in form
+                        let secs = leave.seconds_remaining;
+                        const countdownEl = document.querySelector('.edit-countdown');
+                        const countdownTimer = setInterval(() => {
+                            secs--;
+                            if (secs <= 0) {
+                                clearInterval(countdownTimer);
+                                closeSlidePanel();
+                                Swal.fire({ title: 'Edit Window Expired', icon: 'warning', customClass: { popup: 'zoho-swal' } });
+                            } else {
+                                countdownEl.textContent = `${Math.floor(secs/60)}:${(secs%60).toString().padStart(2,'0')}`;
+                            }
+                        }, 1000);
+                        
+                        setTimeout(() => {
+                            document.getElementById('leaveEditForm').addEventListener('submit', (e) => {
+                                e.preventDefault();
+                                clearInterval(countdownTimer);
+                                handleLeaveEdit(e, leaveId);
+                            });
+                            // Set min date for to_date based on from_date
+                            document.getElementById('editFromDate').addEventListener('change', function() {
+                                document.getElementById('editToDate').min = this.value;
+                                if (document.getElementById('editToDate').value < this.value) {
+                                    document.getElementById('editToDate').value = this.value;
+                                }
+                                calculateEditDays();
+                            });
+                        }, 100);
+                    }
+                });
+        });
+}
+
+// Calculate days for edit form
+function calculateEditDays() {
+    const fromDate = document.getElementById('editFromDate')?.value;
+    const toDate = document.getElementById('editToDate')?.value;
+    const daysCount = document.getElementById('editDaysCount');
+    
+    if (fromDate && toDate && daysCount) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        const diffTime = to - from;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        if (diffDays > 0 && diffDays <= 30) {
+            daysCount.textContent = diffDays;
+            daysCount.style.color = 'var(--zoho-neon-purple)';
+        } else if (diffDays > 30) {
+            daysCount.textContent = diffDays + ' (Max 30)';
+            daysCount.style.color = 'var(--zoho-neon-red)';
+        } else {
+            daysCount.textContent = 'Invalid';
+            daysCount.style.color = 'var(--zoho-neon-red)';
+        }
+    }
+}
+
+function handleLeaveEdit(e, leaveId) {
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    const data = {
+        from_date: form.from_date.value,
+        to_date: form.to_date.value,
+        leave_type: form.leave_type.value,
+        notes: form.notes.value
+    };
+    
+    // Client-side validation
+    if (new Date(data.to_date) < new Date(data.from_date)) {
+        Swal.fire({ title: 'Invalid Dates', text: 'To date must be after From date', icon: 'error', customClass: { popup: 'zoho-swal' } });
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Updating...';
+    
+    fetch(`/user/attendance/leave/${leaveId}/edit/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeSlidePanel();
+            Swal.fire({ title: 'Updated!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } }).then(() => location.reload());
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg"></i> Update';
+            Swal.fire({ title: 'Error', html: data.errors ? data.errors.join('<br>') : data.error, icon: 'error', customClass: { popup: 'zoho-swal' } });
+        }
+    });
+}
+
+// Cancel Leave
+function confirmCancelLeave(leaveId) {
+    Swal.fire({
+        title: 'Cancel Leave Request?',
+        text: 'This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Cancel',
+        cancelButtonText: 'No, Keep',
+        customClass: { popup: 'zoho-swal' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoader();
+            fetch(`/user/attendance/leave/${leaveId}/cancel/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoader();
+                if (data.success) {
+                    Swal.fire({ title: 'Cancelled!', text: data.message, icon: 'success', customClass: { popup: 'zoho-swal' } }).then(() => location.reload());
+                } else {
+                    Swal.fire({ title: 'Error', text: data.error, icon: 'error', customClass: { popup: 'zoho-swal' } });
+                }
+            });
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

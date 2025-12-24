@@ -1,0 +1,17 @@
+Hi {{ user_name }},
+
+We regret to inform you that your leave request has been REJECTED.
+
+LEAVE DETAILS
+-------------
+Leave Date: {{ leave_date }}
+Leave Type: {{ leave_type }}
+Reason: {{ reason|default:admin_notes|default:"Not specified" }}
+
+If you have any questions, please contact your manager or HR.
+
+Thanks & Regards,
+TESLEAD IT TEAM
+
+---
+This is an automated notification from SmartLogX.

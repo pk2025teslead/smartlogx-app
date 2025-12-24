@@ -1,0 +1,109 @@
+{% extends 'userpanel/base_user.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="zoho-page-header" data-aos="fade-down">
+    <div>
+        <h1 class="zoho-page-title">Welcome, {{ user.emp_name }}!</h1>
+        <p class="zoho-page-subtitle">{{ current_date|date:"l, d F Y" }} • {{ user.role }}</p>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="zoho-stats-grid" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon blue">
+            <i class="bi bi-journal-text"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ stats.total_logs }}</div>
+            <div class="zoho-stat-label">Logs This Month</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon green">
+            <i class="bi bi-sun"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ stats.first_half_count }}</div>
+            <div class="zoho-stat-label">First Half Logs</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon purple">
+            <i class="bi bi-moon"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ stats.second_half_count }}</div>
+            <div class="zoho-stat-label">Second Half Logs</div>
+        </div>
+    </div>
+    <div class="zoho-stat-card">
+        <div class="zoho-stat-icon yellow">
+            <i class="bi bi-shield-check"></i>
+        </div>
+        <div>
+            <div class="zoho-stat-value">{{ stats.approval_count }}</div>
+            <div class="zoho-stat-label">With Approval</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modules Section -->
+<div class="zoho-card" data-aos="fade-up" data-aos-delay="200">
+    <div class="zoho-card-header">
+        <h3 class="zoho-card-title">
+            <i class="bi bi-grid-3x3-gap" style="margin-right: 8px; color: var(--zoho-accent);"></i>
+            Modules
+        </h3>
+    </div>
+    <div class="zoho-card-body">
+        <div class="module-grid">
+            {% for module in modules %}
+            {% if module.active %}
+            <a href="{% url module.url %}" class="module-card" data-aos="fade-up" data-aos-delay="{{ forloop.counter }}00">
+                <div class="module-card-icon">
+                    <i class="bi {{ module.icon }}"></i>
+                </div>
+                <h4 class="module-card-title">{{ module.name }}</h4>
+                <p class="module-card-desc">{{ module.description }}</p>
+            </a>
+            {% else %}
+            <div class="module-card disabled" data-aos="fade-up" data-aos-delay="{{ forloop.counter }}00">
+                <span class="module-card-badge">Coming Soon</span>
+                <div class="module-card-icon">
+                    <i class="bi {{ module.icon }}"></i>
+                </div>
+                <h4 class="module-card-title">{{ module.name }}</h4>
+                <p class="module-card-desc">{{ module.description }}</p>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="zoho-card" style="margin-top: 24px;" data-aos="fade-up" data-aos-delay="300">
+    <div class="zoho-card-header">
+        <h3 class="zoho-card-title">
+            <i class="bi bi-lightning" style="margin-right: 8px; color: var(--zoho-neon-yellow);"></i>
+            Quick Actions
+        </h3>
+    </div>
+    <div class="zoho-card-body">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="{% url 'userpanel:log_manage' %}" class="zoho-btn zoho-btn-primary">
+                <i class="bi bi-plus-lg"></i>
+                Add Today's Log
+            </a>
+            <a href="{% url 'userpanel:log_manage' %}" class="zoho-btn zoho-btn-secondary">
+                <i class="bi bi-journal-text"></i>
+                View All Logs
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

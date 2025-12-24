@@ -1,0 +1,114 @@
+{% extends 'adminpanel/base_admin.html' %}
+{% load static %}
+
+{% block title %}WFH Management{% endblock %}
+
+{% block content %}
+<div class="zoho-page-header" data-aos="fade-down">
+    <div><h1 class="zoho-page-title">Work From Home Management</h1><p class="zoho-page-subtitle">Manage employee WFH requests</p></div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;" data-aos="fade-up">
+    <div class="month-nav">
+        <button class="month-nav-btn" onclick="navigateMonth({{year}},{{month}},-1)"><i class="bi bi-chevron-left"></i></button>
+        <div class="month-nav-current">{{ month_name }} {{ year }}</div>
+        <button class="month-nav-btn" onclick="navigateMonth({{year}},{{month}},1)" {% if is_current_month %}disabled{% endif %}><i class="bi bi-chevron-right"></i></button>
+    </div>
+    <div style="display:flex;gap:12px;">
+        <div class="zoho-stat-card" style="padding:10px 16px;"><div class="zoho-stat-icon green" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-check-circle"></i></div><div><div class="zoho-stat-value" style="font-size:18px;">{{ stats.approved }}</div><div class="zoho-stat-label" style="font-size:10px;">Approved</div></div></div>
+        <div class="zoho-stat-card" style="padding:10px 16px;"><div class="zoho-stat-icon yellow" style="width:32px;height:32px;font-size:14px;"><i class="bi bi-hourglass-split"></i></div><div><div class="zoho-stat-value" style="font-size:18px;">{{ stats.pending }}</div><div class="zoho-stat-label" style="font-size:10px;">Pending</div></div></div>
+    </div>
+</div>
+
+<div class="zoho-table-wrapper" data-aos="fade-up" data-aos-delay="100">
+    <div class="zoho-table-toolbar">
+        <div class="zoho-search-box"><i class="bi bi-search"></i><input type="text" class="zoho-search-input" placeholder="Search..." onkeyup="searchAdminTable(this.value,'wfhTable')"></div>
+        <button class="zoho-btn zoho-btn-secondary" style="padding:8px 12px;" onclick="wfhTable.resetOrder()"><i class="bi bi-arrow-counterclockwise"></i></button>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="zoho-table" id="wfhTable">
+            <thead><tr>
+                <th data-col="sno" data-draggable="false" style="width:50px;">S.No</th>
+                <th data-col="user">User</th>
+                <th data-col="date">Date</th>
+                <th data-col="reason">Reason</th>
+                <th data-col="notes">Notes</th>
+                <th data-col="status">Status</th>
+                <th data-col="action" data-draggable="false" style="width:150px;">Action</th>
+            </tr></thead>
+            <tbody>
+            {% for w in wfh_records %}
+            <tr>
+                <td data-col="sno">{{ forloop.counter }}</td>
+                <td data-col="user"><div style="font-weight:500;">{{ w.EMP_NAME }}</div><div style="font-size:11px;color:var(--zoho-text-muted);">{{ w.EMP_ID }}</div></td>
+                <td data-col="date">{{ w.WFH_DATE|date:"d M, Y" }}</td>
+                <td data-col="reason">{{ w.REASON|truncatechars:40 }}</td>
+                <td data-col="notes">{{ w.NOTES|default:"-"|truncatechars:25 }}</td>
+                <td data-col="status"><span class="status-badge {% if w.IS_APPROVED == 1 %}approved{% elif w.IS_APPROVED == 0 %}rejected{% else %}pending{% endif %}">{% if w.IS_APPROVED == 1 %}Approved{% elif w.IS_APPROVED == 0 %}Rejected{% else %}Pending{% endif %}</span></td>
+                <td data-col="action">
+                    <div class="action-btns">
+                        <button class="action-btn view" onclick="viewWfhAdmin({{w.ID}})"><i class="bi bi-eye"></i></button>
+                        {% if w.IS_APPROVED is None %}
+                        <button class="action-btn approve" onclick="approveWfhAdmin({{w.ID}},true)"><i class="bi bi-check-lg"></i></button>
+                        <button class="action-btn reject" onclick="approveWfhAdmin({{w.ID}},false)"><i class="bi bi-x-lg"></i></button>
+                        {% endif %}
+                        <button class="action-btn delete" onclick="deleteWfhAdmin({{w.ID}})"><i class="bi bi-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7"><div class="zoho-empty-state"><div class="zoho-empty-icon"><i class="bi bi-house"></i></div><h3 class="zoho-empty-title">No WFH Records</h3></div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include 'adminpanel/_slide_panel.html' %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.status-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:500;}
+.status-badge.approved{background:rgba(16,185,129,0.15);color:#10b981;}
+.status-badge.rejected{background:rgba(239,68,68,0.15);color:#ef4444;}
+.status-badge.pending{background:rgba(245,158,11,0.15);color:#f59e0b;}
+.action-btns{display:flex;gap:4px;}
+.action-btn{width:28px;height:28px;border:none;border-radius:6px;background:transparent;color:var(--zoho-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.action-btn:hover{background:var(--zoho-bg-hover);}
+.action-btn.view:hover{color:#3b82f6;}
+.action-btn.approve:hover{color:#10b981;background:rgba(16,185,129,0.15);}
+.action-btn.reject:hover{color:#ef4444;background:rgba(239,68,68,0.15);}
+.action-btn.delete:hover{color:#ef4444;}
+.month-nav{display:flex;align-items:center;gap:16px;}
+.month-nav-btn{width:36px;height:36px;border-radius:6px;border:1px solid var(--zoho-border);background:var(--zoho-bg-secondary);color:var(--zoho-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.month-nav-btn:hover:not(:disabled){background:var(--zoho-bg-hover);}
+.month-nav-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.month-nav-current{font-size:16px;font-weight:600;min-width:150px;text-align:center;}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/admin-tables.js' %}"></script>
+<script>
+const csrfToken = '{{ csrf_token }}';
+let wfhTable;
+document.addEventListener('DOMContentLoaded', function() { wfhTable = new AdminDraggableTable('wfhTable', 'wfh'); });
+
+function navigateMonth(year, month, direction) {
+    month += direction;
+    if (month < 1) { month = 12; year--; }
+    if (month > 12) { month = 1; year++; }
+    window.location.href = `?year=${year}&month=${month}`;
+}
+
+function searchAdminTable(query, tableId) {
+    const table = document.getElementById(tableId);
+    const rows = table.querySelectorAll('tbody tr');
+    query = query.toLowerCase();
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

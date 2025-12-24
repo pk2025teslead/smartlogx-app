@@ -64,7 +64,6 @@ htmlcov/
 
 # Logs
 *.log
-logs/
 
 # OS
 Thumbs.db

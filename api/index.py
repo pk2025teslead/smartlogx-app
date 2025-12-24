@@ -1,13 +1,11 @@
-from django.core.wsgi import get_wsgi_application
 import os
 import sys
+from django.core.wsgi import get_wsgi_application
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Add project root to Python path
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_root)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smartlogx.settings')
 
-application = get_wsgi_application()
-
-def handler(request):
-    return application(request)
+app = get_wsgi_application()

@@ -71,7 +71,7 @@ WSGI_APPLICATION = "smartlogx.wsgi.application"
 
 # Database - Use PostgreSQL for production
 DATABASE_URL = config('DATABASE_URL', default=None)
-if DATABASE_URL:
+if DATABASE_URL and DATABASE_URL.strip():
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }

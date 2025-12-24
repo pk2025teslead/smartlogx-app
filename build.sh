@@ -17,10 +17,5 @@ pip install -r requirements.txt --no-cache-dir
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
-echo "Running migrations..."
-python manage.py migrate
-
-echo "Creating admin user..."
-python create_admin.py
-
 echo "Build completed successfully!"
+echo "Note: Migrations and admin user creation will be done via web endpoint"

@@ -28,31 +28,82 @@ from decouple import config
 
 @csrf_exempt
 def setup_database_view(request):
-    """Setup database after Vercel deployment"""
+    """Setup database after deployment"""
     try:
+        from logs.models import Log
+        
         # Run migrations
-        call_command('migrate', verbosity=0)
+        print("Running migrations...")
+        call_command('migrate', verbosity=2)
         
         # Create superuser if doesn't exist
         if not User.objects.filter(is_superuser=True).exists():
-            User.objects.create_superuser(
+            admin_user = User.objects.create_superuser(
                 username='admin',
-                email=config('ADMIN_EMAIL', default='admin@example.com'),
-                password='admin123'
+                email=config('ADMIN_EMAIL', default='admin@smartlogx.com'),
+                password='admin123',
+                first_name='Admin',
+                last_name='User'
             )
-            message = "✅ Database setup complete! Superuser created: admin/admin123"
+            admin_created = True
         else:
-            message = "✅ Database migrations complete! Superuser already exists."
-            
+            admin_user = User.objects.filter(is_superuser=True).first()
+            admin_created = False
+        
+        # Create sample users
+        sample_users_created = 0
+        sample_users = [
+            {'username': 'john_doe', 'email': 'john@example.com', 'first_name': 'John', 'last_name': 'Doe'},
+            {'username': 'jane_smith', 'email': 'jane@example.com', 'first_name': 'Jane', 'last_name': 'Smith'},
+        ]
+        
+        for user_data in sample_users:
+            if not User.objects.filter(username=user_data['username']).exists():
+                User.objects.create_user(
+                    username=user_data['username'],
+                    email=user_data['email'],
+                    password='password123',
+                    first_name=user_data['first_name'],
+                    last_name=user_data['last_name']
+                )
+                sample_users_created += 1
+        
+        # Create sample logs
+        sample_logs_created = 0
+        if User.objects.exists():
+            users = User.objects.all()[:2]  # Get first 2 users
+            for user in users:
+                if not Log.objects.filter(user=user).exists():
+                    Log.objects.create(
+                        user=user,
+                        title='Welcome to SmartLogX',
+                        description='This is your first log entry. You can edit or delete this.',
+                        priority='Medium',
+                        log_date='2024-12-24'
+                    )
+                    sample_logs_created += 1
+        
         return JsonResponse({
             'status': 'success',
-            'message': message
+            'message': 'Database setup completed successfully!',
+            'details': {
+                'admin_created': admin_created,
+                'sample_users_created': sample_users_created,
+                'sample_logs_created': sample_logs_created,
+                'total_users': User.objects.count(),
+                'total_logs': Log.objects.count(),
+                'login_info': {
+                    'admin': 'admin / admin123',
+                    'users': 'john_doe, jane_smith / password123'
+                }
+            }
         })
         
     except Exception as e:
         return JsonResponse({
             'status': 'error', 
-            'message': f'Setup failed: {str(e)}'
+            'message': f'Setup failed: {str(e)}',
+            'error_type': type(e).__name__
         })
 
 def debug_database_view(request):

@@ -20,4 +20,7 @@ python manage.py collectstatic --no-input
 echo "Running migrations..."
 python manage.py migrate
 
+echo "Creating admin user..."
+python create_admin.py
+
 echo "Build completed successfully!"

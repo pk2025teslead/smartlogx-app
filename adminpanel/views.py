@@ -162,23 +162,47 @@ def get_users_count_by_role():
 @user_passes_test(is_admin)
 def dashboard_view(request):
     """Admin dashboard with all logs and analytics"""
-    logs = Log.get_all_logs_raw()
-    users = UserProfile.get_all_users_raw()
-    priority_stats = Log.get_priority_stats_raw()
-    
-    priority_data = {'Low': 0, 'Medium': 0, 'High': 0}
-    for stat in priority_stats:
-        priority_data[stat['priority']] = stat['count']
-    
-    context = {
-        'logs': logs,
-        'users': users,
-        'total_logs': len(logs),
-        'total_users': len(users),
-        'priority_stats': json.dumps(priority_data),
-    }
-    
-    return render(request, 'adminpanel/dashboard.html', context)
+    try:
+        from django.contrib.auth.models import User
+        
+        # Get logs using the working method
+        logs = Log.get_all_logs_raw() if hasattr(Log, 'get_all_logs_raw') else []
+        
+        # Get users from Django's User model instead of UserProfile
+        users = User.objects.all().values('id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'date_joined')
+        users_list = list(users)
+        
+        # Get priority stats
+        priority_stats = Log.get_priority_stats_raw() if hasattr(Log, 'get_priority_stats_raw') else []
+        
+        priority_data = {'Low': 0, 'Medium': 0, 'High': 0}
+        for stat in priority_stats:
+            priority_data[stat['priority']] = stat['count']
+        
+        context = {
+            'logs': logs,
+            'users': users_list,
+            'total_logs': len(logs),
+            'total_users': len(users_list),
+            'priority_stats': json.dumps(priority_data),
+        }
+        
+        return render(request, 'adminpanel/dashboard.html', context)
+        
+    except Exception as e:
+        # If there's still an error, show a simple dashboard
+        from django.contrib.auth.models import User
+        
+        context = {
+            'logs': [],
+            'users': list(User.objects.all().values('id', 'username', 'email')),
+            'total_logs': Log.objects.count() if Log.objects else 0,
+            'total_users': User.objects.count(),
+            'priority_stats': json.dumps({'Low': 0, 'Medium': 0, 'High': 0}),
+            'error': str(e)
+        }
+        
+        return render(request, 'adminpanel/dashboard.html', context)
 
 
 @login_required
@@ -476,18 +500,23 @@ def filter_logs_view(request):
     end_date = request.GET.get('end_date')
     priority = request.GET.get('priority')
     
-    logs = Log.get_logs_by_filter_raw(
-        user_id=user_id if user_id else None,
-        start_date=start_date if start_date else None,
-        end_date=end_date if end_date else None,
-        priority=priority if priority else None
-    )
+    try:
+        logs = Log.get_logs_by_filter_raw(
+            user_id=user_id if user_id else None,
+            start_date=start_date if start_date else None,
+            end_date=end_date if end_date else None,
+            priority=priority if priority else None
+        )
+    except:
+        logs = []
     
-    users = UserProfile.get_all_users_raw()
+    # Use Django User model instead of UserProfile
+    from django.contrib.auth.models import User
+    users = User.objects.all().values('id', 'username', 'email')
     
     context = {
         'logs': logs,
-        'users': users,
+        'users': list(users),
         'filters': {
             'user_id': user_id,
             'start_date': start_date,
@@ -503,8 +532,9 @@ def filter_logs_view(request):
 @user_passes_test(is_admin)
 def manage_users_view(request):
     """Manage users - activate/deactivate"""
-    users = UserProfile.get_all_users_raw()
-    return render(request, 'adminpanel/manage_users.html', {'users': users})
+    from django.contrib.auth.models import User
+    users = User.objects.all().values('id', 'username', 'email', 'first_name', 'last_name', 'is_active')
+    return render(request, 'adminpanel/manage_users.html', {'users': list(users)})
 
 
 @login_required
@@ -514,7 +544,10 @@ def toggle_user_status(request, user_id):
     if request.method == 'POST':
         status = request.POST.get('status') == 'true'
         try:
-            UserProfile.toggle_user_status_raw(user_id, status)
+            from django.contrib.auth.models import User
+            user = User.objects.get(id=user_id)
+            user.is_active = status
+            user.save()
             messages.success(request, 'User status updated successfully.')
         except Exception as e:
             messages.error(request, f'Error updating user status: {str(e)}')

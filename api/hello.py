@@ -1,7 +1,6 @@
-from django.http import JsonResponse
-
 def handler(request):
-    return JsonResponse({
-        'message': 'Hello from Vercel!',
-        'status': 'working'
-    })
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': '{"message": "Hello from Vercel!", "status": "working"}'
+    }

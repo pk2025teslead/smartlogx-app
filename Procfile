@@ -1,1 +1,1 @@
-web: gunicorn smartlogx.wsgi --log-file -
+web: python manage.py migrate && python manage.py collectstatic --noinput && gunicorn smartlogx.wsgi --log-file -

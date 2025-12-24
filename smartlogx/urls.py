@@ -55,6 +55,48 @@ def setup_database_view(request):
             'message': f'Setup failed: {str(e)}'
         })
 
+def debug_database_view(request):
+    """Debug database status"""
+    try:
+        from logs.models import Log
+        
+        users_count = User.objects.count()
+        logs_count = Log.objects.count()
+        admin_count = User.objects.filter(is_superuser=True).count()
+        
+        # Get admin user details
+        admin_exists = False
+        admin_details = {}
+        try:
+            admin = User.objects.get(username='admin')
+            admin_exists = True
+            admin_details = {
+                'username': admin.username,
+                'email': admin.email,
+                'is_active': admin.is_active,
+                'is_superuser': admin.is_superuser,
+                'is_staff': admin.is_staff
+            }
+        except User.DoesNotExist:
+            pass
+        
+        return JsonResponse({
+            'status': 'success',
+            'database_status': {
+                'total_users': users_count,
+                'total_logs': logs_count,
+                'admin_users': admin_count,
+                'admin_exists': admin_exists,
+                'admin_details': admin_details
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include('accounts.urls')),
@@ -62,6 +104,7 @@ urlpatterns = [
     path("adminpanel/", include('adminpanel.urls')),
     path("user/", include('userpanel.urls')),
     path("setup-db/", setup_database_view, name='setup_database'),
+    path("debug-db/", debug_database_view, name='debug_database'),
     # Landing page commented - direct to login
     # path("", include('public.urls')),
     path("", lambda request: redirect('/accounts/login/')),

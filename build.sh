@@ -8,9 +8,11 @@ python --version
 echo "Pip version:"
 pip --version
 
-echo "Installing dependencies..."
+echo "Upgrading pip..."
 pip install --upgrade pip
-pip install -r requirements.txt
+
+echo "Installing dependencies..."
+pip install -r requirements.txt --no-cache-dir
 
 echo "Collecting static files..."
 python manage.py collectstatic --no-input

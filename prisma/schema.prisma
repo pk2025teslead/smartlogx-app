@@ -1,0 +1,240 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User Management
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  empId         String    @unique @map("emp_id")
+  empName       String    @map("emp_name")
+  email         String    @unique
+  mobileNumber  String?   @map("mobile_number")
+  role          String
+  department    String?   @map("roll")
+  password      String
+  isFirstLogin  Boolean   @default(true) @map("is_first_login")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  logs          UserLog[]
+  leaves        Leave[]
+  compOffs      CompOff[]
+  wfhRequests   WFH[]
+  approvedLeaves Leave[] @relation("LeaveApprover")
+  approvedCompOffs CompOff[] @relation("CompOffApprover")
+  approvedWFH   WFH[] @relation("WFHApprover")
+  auditLogs     AuditLog[]
+  approvalCodes ApprovalCode[]
+
+  @@map("users_master")
+}
+
+// ============================================
+// User Logs (Daily Work Logs)
+// ============================================
+
+model UserLog {
+  id              String      @id @default(cuid())
+  userId          String      @map("user_id")
+  projectTitle    String      @map("project_title")
+  logHeading      String      @map("log_heading")
+  logDetails      String      @map("log_details")
+  logDate         DateTime    @map("log_date") @db.Date
+  sessionType     SessionType @map("session_type")
+  approvalRequired Boolean    @default(false) @map("approval_required")
+  approvalCode    String?     @map("approval_code")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_logs")
+}
+
+enum SessionType {
+  FIRST_HALF  @map("First Half")
+  SECOND_HALF @map("Second Half")
+}
+
+// ============================================
+// Leave Management
+// ============================================
+
+model Leave {
+  id              String      @id @default(cuid())
+  userId          String      @map("user_id")
+  leaveDate       DateTime    @map("leave_date") @db.Date
+  leaveType       LeaveType   @map("leave_type")
+  notes           String?
+  status          LeaveStatus @default(PENDING)
+  isEditable      Boolean     @default(true) @map("is_editable")
+  editableUntil   DateTime    @map("editable_until")
+  createdBy       String      @map("created_by")
+  approvedBy      String?     @map("approved_by")
+  approvedAt      DateTime?   @map("approved_at")
+  approvalNotes   String?     @map("approval_notes")
+  emailSentAdmin  Boolean     @default(false) @map("email_sent_admin")
+  emailSentUser   Boolean     @default(false) @map("email_sent_user")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approver User? @relation("LeaveApprover", fields: [approvedBy], references: [id])
+  auditLogs AuditLog[]
+
+  @@map("attendance_leave_v2")
+}
+
+enum LeaveType {
+  PLANNED
+  CASUAL
+  EMERGENCY
+  SICK
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// ============================================
+// Comp-Off Management
+// ============================================
+
+model CompOff {
+  id              String      @id @default(cuid())
+  userId          String      @map("user_id")
+  sundayDate      DateTime    @map("sunday_date") @db.Date
+  workPurpose     String      @map("work_purpose")
+  compOffDate     DateTime?   @map("compoff_date") @db.Date
+  noCompOff       Boolean     @default(false) @map("no_compoff")
+  notes           String?
+  status          LeaveStatus @default(PENDING) @map("is_approved")
+  approvedBy      String?     @map("approver_id")
+  approvedAt      DateTime?   @map("approved_at")
+  approvalNotes   String?     @map("approval_notes")
+  createdAt       DateTime    @default(now()) @map("requested_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approver User? @relation("CompOffApprover", fields: [approvedBy], references: [id])
+
+  @@map("attendance_compoff")
+}
+
+// ============================================
+// Work From Home Management
+// ============================================
+
+model WFH {
+  id              String      @id @default(cuid())
+  userId          String      @map("user_id")
+  wfhDate         DateTime    @map("wfh_date") @db.Date
+  reason          String
+  notes           String?
+  status          LeaveStatus @default(PENDING) @map("is_approved")
+  approvedBy      String?     @map("approver_id")
+  approvedAt      DateTime?   @map("approved_at")
+  approvalNotes   String?     @map("approval_notes")
+  createdAt       DateTime    @default(now()) @map("requested_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approver User? @relation("WFHApprover", fields: [approvedBy], references: [id])
+
+  @@map("attendance_wfh")
+}
+
+// ============================================
+// Approval Codes (Temporary)
+// ============================================
+
+model ApprovalCode {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  code        String
+  sessionType SessionType @map("session_type")
+  expiresAt   DateTime    @map("expires_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("approval_codes")
+}
+
+// ============================================
+// Projects Master
+// ============================================
+
+model Project {
+  id          String  @id @default(cuid())
+  projectName String  @map("project_name")
+  projectCode String  @unique @map("project_code")
+  description String?
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("projects")
+}
+
+// ============================================
+// Audit Trail
+// ============================================
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  leaveId     String?   @map("leave_id")
+  action      String
+  actorId     String    @map("actor_id")
+  actorRole   String    @map("actor_role")
+  actorName   String    @map("actor_name")
+  oldData     Json?     @map("old_data")
+  newData     Json?     @map("new_data")
+  reason      String?
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  leave Leave? @relation(fields: [leaveId], references: [id], onDelete: Cascade)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_leave_audit")
+}
+
+// ============================================
+// Contact Inquiries
+// ============================================
+
+model ContactInquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_inquiries")
+}

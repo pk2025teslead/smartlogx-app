@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './db'
+import { verifyDjangoPassword } from './django-auth'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -16,35 +17,35 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Try to find user by empId or email
-        const user = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { empId: credentials.username },
-              { email: credentials.username }
-            ],
-            isActive: true
-          }
-        })
+        // Try to find user by empId or email using raw SQL for MySQL
+        const users = await prisma.$queryRaw`
+          SELECT ID, EMP_ID, EMP_NAME, EMAIL, ROLE, ROLL, PASSWORD, IS_FIRST_LOGIN
+          FROM users_master 
+          WHERE (EMP_ID = ${credentials.username} OR EMAIL = ${credentials.username})
+          AND ID IS NOT NULL
+        `
 
-        if (!user) {
+        if (!Array.isArray(users) || users.length === 0) {
           return null
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+        const user = users[0] as any
+
+        // Verify password using Django PBKDF2 format
+        const isPasswordValid = verifyDjangoPassword(credentials.password, user.PASSWORD)
 
         if (!isPasswordValid) {
           return null
         }
 
         return {
-          id: user.id,
-          empId: user.empId,
-          name: user.empName,
-          email: user.email,
-          role: user.role,
-          department: user.department || '',
-          isFirstLogin: user.isFirstLogin
+          id: user.ID.toString(),
+          empId: user.EMP_ID,
+          name: user.EMP_NAME,
+          email: user.EMAIL,
+          role: user.ROLE,
+          department: user.ROLL || '',
+          isFirstLogin: Boolean(user.IS_FIRST_LOGIN)
         }
       }
     })

@@ -13,6 +13,9 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate-existing": "tsx prisma/migrate-existing-data.ts",
+    "db:create-admin": "tsx prisma/create-admin.ts",
+    "db:check-admin": "tsx prisma/check-admin.ts",
+    "db:test-auth": "tsx prisma/test-auth.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

@@ -1,0 +1,31 @@
+Add these Environment Variables in Vercel Dashboard:
+
+DATABASE_URL
+postgresql://postgres:TgWowLFYKoEMqgMYeKRljOIkDKtCTyoj@switchyard.proxy.rlwy.net:26784/railway
+
+NEXTAUTH_URL
+https://smartlogx-app.vercel.app
+
+NEXTAUTH_SECRET
+your-very-secure-secret-key-for-production-change-this
+
+SMTP_HOST
+smtp.gmail.com
+
+SMTP_PORT
+587
+
+SMTP_USER
+pandikumar652001@gmail.com
+
+SMTP_PASS
+ljaq lzil dcxn dfmt
+
+ADMIN_EMAIL
+pandikumar652001@gmail.com
+
+APP_NAME
+SmartLogX
+
+APP_URL
+https://smartlogx-app.vercel.app

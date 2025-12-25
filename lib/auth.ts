@@ -43,7 +43,7 @@ export const authOptions: NextAuthOptions = {
           name: user.empName,
           email: user.email,
           role: user.role,
-          department: user.department,
+          department: user.department || '',
           isFirstLogin: user.isFirstLogin
         }
       }
